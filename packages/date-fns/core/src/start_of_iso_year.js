@@ -1,5 +1,5 @@
-var parse = require('./parse')
-var startOfWeek = require('./start_of_week')
+var getISOYear = require('./get_iso_year')
+var startOfISOWeek = require('./start_of_iso_week')
 
 /**
  * Return the start of an ISO week-numbering year,
@@ -16,17 +16,9 @@ var startOfWeek = require('./start_of_week')
  * //=> Mon Jan 03 2005 00:00:00
  */
 var startOfISOYear = function(dirtyDate) {
-  var date = parse(dirtyDate)
-  var startOfNextYear = startOfWeek(new Date(date.getFullYear() + 1, 0, 4), 1)
-  var startOfThisYear = startOfWeek(new Date(date.getFullYear(), 0, 4), 1)
-
-  if (date.getTime() >= startOfNextYear.getTime()) {
-    return startOfNextYear
-  } else if (date.getTime() >= startOfThisYear.getTime()) {
-    return startOfThisYear
-  } else {
-    return startOfWeek(new Date(date.getFullYear() - 1, 0, 4), 1)
-  }
+  var year = getISOYear(dirtyDate)
+  var date = startOfISOWeek(new Date(year, 0, 4))
+  return date
 }
 
 module.exports = startOfISOYear
