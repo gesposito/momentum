@@ -37,5 +37,8 @@ export type Locale = {
 
 declare module.exports: (
   intervalLeft: Interval,
-  intervalRight: Interval
+  intervalRight: Interval,
+  options?: {
+    inclusive?: boolean
+  }
 ) => boolean
