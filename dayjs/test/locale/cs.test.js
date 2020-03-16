@@ -19,7 +19,7 @@ it('RelativeTime: Time from X', () => {
     [44.4, 'second'], // a few seconds
     [89.5, 'second'], // a minute
     [2, 'minute'], // 2 minutes
-    [43, 'minute'], // 44 minutes
+    [43, 'minute'], // 43 minutes
     [45, 'minute'], // an hour
     [3, 'hour'], // 3 hours
     [21, 'hour'], // 21 hours
