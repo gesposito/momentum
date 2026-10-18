@@ -305,21 +305,36 @@ const unknownFields: GregorianDateTime = {
   millisecond: NaN,
 };
 
+// shift the calendar date of a valid DateTime by whole months, then by whole days, keeping the
+// time of day; null when not representable
+function shiftDate(inst: DateTime, months: number, days: number): ResolvedLocal | null {
+  const c = fieldsOf(inst);
+  let date: PlainDate;
+  try {
+    // the day is clamped to the length of the target month (Temporal's "constrain" overflow),
+    // which is what Luxon does before it adds days
+    date = plainDate(c.year, c.month, c.day);
+    if (months !== 0) date = date.add({ months });
+    if (days !== 0) date = date.add({ days });
+  } catch (e) {
+    if (!isRangeError(e)) throw e;
+    return null;
+  }
+  return resolveFields(
+    { ...c, year: date.year, month: date.month, day: date.day },
+    offsetOf(inst),
+    inst.zone
+  );
+}
+
 // create a new DT instance by adding a duration, adjusting for DSTs
 function adjustTime(inst: DateTime, dur: Duration): CloneAlts {
-  const instC = fieldsOf(inst),
-    oPre = offsetOf(inst),
-    year = instC.year + Math.trunc(dur.years),
-    month = instC.month + Math.trunc(dur.months) + Math.trunc(dur.quarters) * 3,
-    c: GregorianDateTime = {
-      ...instC,
-      year,
-      month,
-      day:
-        Math.min(instC.day, daysInMonth(year, month)) +
-        Math.trunc(dur.days) +
-        Math.trunc(dur.weeks) * 7,
-    },
+  // calendar units move the wall clock (Temporal.PlainDate#add, years and months before days,
+  // which keeps plus({ months: 1, days: -1 }) equal to plus({ months: 1 }).plus({ days: -1 }));
+  // the new wall clock is resolved with the previous offset as the guess. Time units, and the
+  // fractions of calendar units, are exact milliseconds added to the instant.
+  const months = Math.trunc(dur.years) * 12 + Math.trunc(dur.quarters) * 3 + Math.trunc(dur.months),
+    days = Math.trunc(dur.weeks) * 7 + Math.trunc(dur.days),
     millisToAdd = Duration.fromObject({
       years: dur.years - Math.trunc(dur.years),
       quarters: dur.quarters - Math.trunc(dur.quarters),
@@ -330,22 +345,21 @@ function adjustTime(inst: DateTime, dur: Duration): CloneAlts {
       minutes: dur.minutes,
       seconds: dur.seconds,
       milliseconds: dur.milliseconds,
-    }).as("milliseconds"),
-    hasCalendarUnits = c.year !== instC.year || c.month !== instC.month || c.day !== instC.day;
+    }).as("milliseconds");
 
   let alts: CloneAlts;
-  if (hasCalendarUnits) {
-    const resolved = resolveFields(c, oPre, inst.zone);
+  if (months !== 0 || days !== 0) {
+    const resolved = shiftDate(inst, months, days);
     if (resolved === null) return notRepresentable;
     alts = resolved;
   } else {
-    alts = { ts: inst.ts, o: oPre, c: instC, wasHole: false };
+    alts = { wasHole: false };
   }
 
   if (millisToAdd !== 0) {
     // that could have changed the offset by going over a DST; the fields and offset are
-    // recomputed from the new instant by the constructor
-    alts = { ts: (alts.ts as number) + millisToAdd, c: null, o: null, wasHole: alts.wasHole };
+    // derived from the new instant when needed
+    alts = { ts: (alts.ts ?? inst.ts) + millisToAdd, c: null, o: null, wasHole: alts.wasHole };
   }
 
   return alts;

@@ -203,6 +203,47 @@ describe("wall-clock resolution", () => {
   });
 });
 
+describe("calendar arithmetic", () => {
+  const jan31 = DateTime.fromObject({ year: 2017, month: 1, day: 31, hour: 10 }, { zone: "UTC" });
+
+  test("adds months before days and clamps to the length of the month", () => {
+    expect(jan31.plus({ months: 1 }).toISODate()).toBe("2017-02-28");
+    expect(jan31.plus({ months: 1, days: 1 }).toISODate()).toBe("2017-03-01");
+    expect(jan31.plus({ months: 1, days: -1 }).toISODate()).toBe("2017-02-27");
+    expect(jan31.plus({ months: 1, days: -1 }).equals(jan31.plus({ months: 1 }).plus({ days: -1 }))).toBe(
+      true
+    );
+    expect(jan31.plus({ years: 3, months: 1 }).toISODate()).toBe("2020-02-29");
+    expect(jan31.minus({ quarters: 1 }).toISODate()).toBe("2016-10-31");
+  });
+
+  test("accepts mixed signs and fractions", () => {
+    expect(jan31.plus({ years: 1, months: -1 }).toISODate()).toBe("2017-12-31");
+    expect(jan31.plus({ quarters: 1, weeks: -1 }).toISODate()).toBe("2017-04-23");
+    expect(jan31.plus({ days: 1.5 }).toISO()).toBe("2017-02-01T22:00:00.000Z");
+    expect(jan31.plus({ months: -1, hours: 30 }).toISO()).toBe("2017-01-01T16:00:00.000Z");
+  });
+
+  test("keeps the wall clock across transitions, unlike time units", () => {
+    const ny = DateTime.fromObject({ year: 2017, month: 3, day: 11, hour: 12 }, { zone: "America/New_York" });
+    expect(ny.plus({ days: 1 }).toISO()).toBe("2017-03-12T12:00:00.000-04:00");
+    expect(ny.plus({ hours: 24 }).toISO()).toBe("2017-03-12T13:00:00.000-04:00");
+    const apia = DateTime.fromObject({ year: 2011, month: 12, day: 29, hour: 12 }, { zone: "Pacific/Apia" });
+    expect(apia.plus({ days: 1 }).toISO()).toBe("2011-12-31T12:00:00.000+14:00");
+    expect(apia.plus({ days: 1 }).wasHole).toBe(true);
+    expect(apia.plus({ days: 2 }).toISO()).toBe("2011-12-31T12:00:00.000+14:00");
+    expect(apia.plus({ days: 2 }).wasHole).toBe(false);
+  });
+
+  test("is invalid when it leaves Temporal's range", () => {
+    const dt = DateTime.fromMillis(8.64e15 - 86400000, { zone: "UTC" });
+    expect(dt.plus({ days: 1 }).isValid).toBe(true);
+    expect(dt.plus({ days: 2 }).invalidReason).toBe("invalid input");
+    expect(dt.plus({ months: 1 }).invalidReason).toBe("invalid input");
+    expect(dt.plus({ years: 1e20 }).invalidReason).toBe("invalid input");
+  });
+});
+
 describe("custom zones", () => {
   const zone = new Switching2017Zone(),
     reference = "America/New_York";
