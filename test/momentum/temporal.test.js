@@ -1,5 +1,12 @@
 /* global test expect describe */
-import { DateTime, FixedOffsetZone, IANAZone, Zone } from "../../src/momentum";
+import {
+  DateTime,
+  FixedOffsetZone,
+  IANAZone,
+  Settings,
+  TemporalUnavailableError,
+  Zone,
+} from "../../src/momentum";
 
 const T = globalThis.Temporal;
 
@@ -184,5 +191,27 @@ describe("Temporal-backed zones", () => {
     expect(spring.hour).toBe(3);
     expect(spring.wasHole).toBe(true);
     expect(spring.getPossibleOffsets()).toHaveLength(1);
+  });
+});
+
+describe("Temporal availability", () => {
+  test("a descriptive error is thrown when Temporal is missing", () => {
+    const original = globalThis.Temporal;
+    try {
+      delete globalThis.Temporal;
+      Settings.resetCaches();
+      let error = null;
+      try {
+        DateTime.now();
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(TemporalUnavailableError);
+      expect(error.name).toBe("TemporalUnavailableError");
+      expect(error.message).toMatch(/momentum\/polyfill/);
+    } finally {
+      globalThis.Temporal = original;
+      Settings.resetCaches();
+    }
   });
 });

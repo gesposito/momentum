@@ -334,6 +334,10 @@ exports[`the public API surface matches Luxon's 1`] = `
       "instance",
     ],
   },
+  "TemporalUnavailableError": {
+    "prototype": [],
+    "static": [],
+  },
   "Zone": {
     "prototype": [
       "equals",
@@ -357,6 +361,7 @@ exports[`the public API surface matches Luxon's 1`] = `
     "InvalidZone",
     "Settings",
     "SystemZone",
+    "TemporalUnavailableError",
     "VERSION",
     "Zone",
   ],

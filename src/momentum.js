@@ -8,6 +8,7 @@ import IANAZone from "./zones/IANAZone.js";
 import InvalidZone from "./zones/invalidZone.js";
 import SystemZone from "./zones/systemZone.js";
 import Settings from "./settings.js";
+import { TemporalUnavailableError } from "./errors.js";
 
 const VERSION = "3.7.2";
 
@@ -23,4 +24,5 @@ export {
   InvalidZone,
   SystemZone,
   Settings,
+  TemporalUnavailableError,
 };
