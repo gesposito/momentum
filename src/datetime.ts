@@ -56,8 +56,8 @@ import {
   offsetTimeZoneId,
   plainDate,
   resolveWallClock,
-  utcMillis,
   temporal,
+  utcMillis,
   wallClock,
   wallClockAtOffset,
   zonedDateTime,
@@ -641,6 +641,7 @@ function guessOffsetForZone(zone: Zone): number {
 
   // Do not cache anything but IANA zones, because it is not safe to do so.
   // Guessing an offset which is not present in the zone can cause wrong results from fixOffset
+  // (which custom zones still use)
   if (zone.type !== "iana") {
     return zone.offset(zoneOffsetTs);
   }

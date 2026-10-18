@@ -4,8 +4,10 @@
   first call (see `momentum/polyfill`).
 
   Temporal is the authority for the calendar and for everything that depends on the time zone
-  database: a DateTime reads its calendar fields and UTC offset from the Temporal.ZonedDateTime
-  of its instant in its zone, and Zone#offset() is answered from transition windows cached here.
+  database. A DateTime reads its calendar fields and UTC offset from the Temporal.ZonedDateTime of
+  its instant in its zone, turns wall-clock times into instants with ZonedDateTime.from
+  (resolveWallClock) and takes calendar arithmetic and week data from Temporal.PlainDate.
+  Zone#offset() (IANAZone, SystemZone) is answered from transition windows cached here.
 */
 
 import type { Temporal as TemporalNamespace } from "temporal-spec";

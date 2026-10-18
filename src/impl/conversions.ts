@@ -46,12 +46,17 @@ function cycleShift(year: number): number {
 
 /**
  * ISO weekday (1 = Monday ... 7 = Sunday) of a proleptic Gregorian date, from Temporal. NaN when
- * the year is not a finite number.
+ * the year is not a finite number (or too large to be an exact integer).
  */
 export function dayOfWeek(year: number, month: number, day: number): number {
   if (!Number.isFinite(year)) return NaN;
   const y = Math.trunc(year);
-  return plainDate(y - cycleShift(y), month, day).dayOfWeek;
+  try {
+    return plainDate(y - cycleShift(y), month, day).dayOfWeek;
+  } catch (e) {
+    if (!isRangeError(e)) throw e;
+    return NaN;
+  }
 }
 
 // the date of the ordinal-th day of a year, from Temporal. As in Luxon, which hands the ordinal to

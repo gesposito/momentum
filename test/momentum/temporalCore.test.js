@@ -294,6 +294,12 @@ describe("week, ordinal and month fields", () => {
       "unit out of range"
     );
     expect(DateTime.fromObject({ year: 300000, ordinal: 1 }).invalidReason).toBe("invalid input");
+    expect(DateTime.fromObject({ weekYear: 1e25, weekNumber: 1 }).invalidReason).toBe(
+      "invalid input"
+    );
+    expect(dt.set({ weekYear: 1e25 }).invalidReason).toBe("invalid input");
+    // fractions are truncated, as Date.UTC() does in Luxon (2017 has no week 53)
+    expect(dt.set({ weekYear: 2017.5 }).toISODate()).toBe("2018-01-05");
   });
 
   test("ordinals roll over like Luxon's, which rejects those of 0 or less", () => {
