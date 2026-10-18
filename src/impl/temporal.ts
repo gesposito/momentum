@@ -214,6 +214,15 @@ export function resolveWallClock(
   return { zdt, fields: resolved, wasHole: !sameWallClock(resolved, requested) };
 }
 
+/**
+ * Epoch milliseconds of wall-clock fields read as UTC, the "local timestamp" of Luxon's offset
+ * arithmetic, with out-of-range fields rolled over (see resolveWallClock). Throws a RangeError
+ * when the result is not representable.
+ */
+export function utcMillis(fields: GregorianDateTime): number {
+  return resolveWallClock(fields, "UTC").zdt.epochMilliseconds;
+}
+
 // The Gregorian calendar repeats every 400 years: 4800 months, 146097 days
 const CYCLE_MONTHS = 4800,
   CYCLE_DAYS = 146097,

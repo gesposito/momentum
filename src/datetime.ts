@@ -57,13 +57,13 @@ import {
   offsetTimeZoneId,
   plainDate,
   resolveWallClock,
+  utcMillis,
   temporal,
   wallClock,
   wallClockAtOffset,
   zonedDateTime,
 } from "./impl/temporal.js";
 import type { Instant, PlainDate, PlainDateTime, PlainTime, ZonedDateTime } from "./impl/temporal.js";
-import { msFromCivil } from "./impl/calendar.js";
 import type Zone from "./zone.js";
 import type {
   DateObjectUnits,
@@ -279,8 +279,7 @@ function resolveFields(
     } else {
       // custom zones only report the offset of an instant: Luxon's fixOffset, starting from the
       // instant the wall clock would have in UTC
-      const localTS = resolveWallClock(fields, "UTC").zdt.epochMilliseconds,
-        [ts, o, wasHole] = fixOffset(localTS, offsetGuess, zone);
+      const [ts, o, wasHole] = fixOffset(utcMillis(fields), offsetGuess, zone);
       if (!isRepresentableTs(ts) || !Number.isFinite(o)) return null;
       resolved = { ts, o, c: wallClockAtOffset(ts, o), wasHole };
     }
@@ -290,6 +289,43 @@ function resolveFields(
     if (!isRangeError(e)) throw e;
     return null;
   }
+}
+
+// getPossibleOffsets() for custom zones, which only report the offset of an instant: Luxon's
+// algorithm, probing the zone's offsets a day before and a day after the wall clock
+function possibleOffsetsFromZoneOffsets(dt: DateTime): DateTime[] {
+  const dayMs = 86400000,
+    minuteMs = 60000,
+    zone = dt.zone;
+  let localTS: number;
+  try {
+    localTS = utcMillis(fieldsOf(dt));
+  } catch (e) {
+    if (!isRangeError(e)) throw e;
+    return [dt];
+  }
+  const oEarlier = zone.offset(localTS - dayMs),
+    oLater = zone.offset(localTS + dayMs),
+    o1 = zone.offset(localTS - oEarlier * minuteMs),
+    o2 = zone.offset(localTS - oLater * minuteMs);
+  if (o1 === o2) {
+    return [dt];
+  }
+  const ts1 = localTS - o1 * minuteMs,
+    ts2 = localTS - o2 * minuteMs,
+    c1 = fieldsAtOffset(ts1, o1),
+    c2 = fieldsAtOffset(ts2, o2);
+  if (
+    c1 !== null &&
+    c2 !== null &&
+    c1.hour === c2.hour &&
+    c1.minute === c2.minute &&
+    c1.second === c2.second &&
+    c1.millisecond === c2.millisecond
+  ) {
+    return [clone(dt, { ts: ts1, c: c1, o: o1 }), clone(dt, { ts: ts2, c: c2, o: o2 })];
+  }
+  return [dt];
 }
 
 const notRepresentable: CloneAlts = { ts: NaN, c: null, o: null, wasHole: false };
@@ -1666,32 +1702,27 @@ export default class DateTime {
     if (!this.isValid || this.isOffsetFixed) {
       return [this];
     }
-    const dayMs = 86400000;
-    const minuteMs = 60000;
-    const localTS = msFromCivil(fieldsOf(this));
-    const oEarlier = this.zone.offset(localTS - dayMs);
-    const oLater = this.zone.offset(localTS + dayMs);
-
-    const o1 = this.zone.offset(localTS - oEarlier * minuteMs);
-    const o2 = this.zone.offset(localTS - oLater * minuteMs);
-    if (o1 === o2) {
+    if (this.tz === null) {
+      return possibleOffsetsFromZoneOffsets(this);
+    }
+    const c = fieldsOf(this),
+      bag = { ...c, timeZone: this.tz };
+    let earlier: ZonedDateTime, later: ZonedDateTime;
+    try {
+      earlier = temporal().ZonedDateTime.from(bag, { disambiguation: "earlier" });
+      later = temporal().ZonedDateTime.from(bag, { disambiguation: "later" });
+    } catch (e) {
+      // the first day of Temporal's range (see resolveWallClock), where nothing is ambiguous
+      if (!isRangeError(e)) throw e;
       return [this];
     }
-    const ts1 = localTS - o1 * minuteMs;
-    const ts2 = localTS - o2 * minuteMs;
-    const c1 = fieldsAtOffset(ts1, o1);
-    const c2 = fieldsAtOffset(ts2, o2);
-    if (
-      c1 !== null &&
-      c2 !== null &&
-      c1.hour === c2.hour &&
-      c1.minute === c2.minute &&
-      c1.second === c2.second &&
-      c1.millisecond === c2.millisecond
-    ) {
-      return [clone(this, { ts: ts1, c: c1, o: o1 }), clone(this, { ts: ts2, c: c2, o: o2 })];
+    if (earlier.epochMilliseconds === later.epochMilliseconds) {
+      return [this];
     }
-    return [this];
+    return [
+      clone(this, { ts: earlier.epochMilliseconds, c, o: offsetMinutes(earlier) }),
+      clone(this, { ts: later.epochMilliseconds, c, o: offsetMinutes(later) }),
+    ];
   }
 
   /**

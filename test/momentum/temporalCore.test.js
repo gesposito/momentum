@@ -203,6 +203,30 @@ describe("wall-clock resolution", () => {
   });
 });
 
+describe("getPossibleOffsets", () => {
+  test("lists both instants of an ambiguous wall clock, earlier first", () => {
+    const lordHowe = DateTime.fromObject(
+      { year: 2017, month: 4, day: 2, hour: 1, minute: 45 },
+      { zone: "Australia/Lord_Howe" }
+    );
+    expect(lordHowe.getPossibleOffsets().map((d) => d.toISO())).toEqual([
+      "2017-04-02T01:45:00.000+11:00",
+      "2017-04-02T01:45:00.000+10:30",
+    ]);
+    // Samoa lived through 1892-07-04 twice when it moved east of the date line
+    const apia = DateTime.fromObject({ year: 1892, month: 7, day: 4, hour: 12 }, { zone: "Pacific/Apia" });
+    expect(apia.getPossibleOffsets().map((d) => d.offset)).toEqual([753 + 4 / 60, -686 - 56 / 60]);
+  });
+
+  test("returns the DateTime itself when the wall clock is unambiguous", () => {
+    const dt = DateTime.fromObject({ year: 2017, month: 4, day: 2, hour: 3 }, { zone: "Australia/Lord_Howe" });
+    expect(dt.getPossibleOffsets()).toEqual([dt]);
+    expect(dt.getPossibleOffsets()[0]).toBe(dt);
+    const first = DateTime.fromMillis(-8.64e15, { zone: "America/New_York" });
+    expect(first.getPossibleOffsets()[0]).toBe(first);
+  });
+});
+
 describe("calendar arithmetic", () => {
   const jan31 = DateTime.fromObject({ year: 2017, month: 1, day: 31, hour: 10 }, { zone: "UTC" });
 
