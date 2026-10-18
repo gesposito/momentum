@@ -57,12 +57,97 @@ export function offsetMinutes(zdt) {
   return zdt.offsetNanoseconds / NANOS_PER_MINUTE;
 }
 
+// OFFSETS
+
+// A zone's offset is constant between two transitions. Looking a transition window up once and
+// remembering it makes repeated offset queries for nearby instants (the common case) free of
+// Temporal calls. A handful of windows is kept per zone, most recently used first.
+const WINDOWS_PER_ZONE = 8;
+const offsetWindows = new Map();
+
+/**
+ * Forget cached offset windows. Should only be necessary in testing scenarios.
+ */
+export function resetOffsetCache() {
+  offsetWindows.clear();
+}
+
+// longer than the gap between consecutive transitions in any zone that has them
+const LOOKBACK_MS = 366 * 86400000;
+
+function transitionWindow(timeZone, exact) {
+  const zdt = zonedDateTime(exact, timeZone),
+    offset = offsetMinutes(zdt);
+
+  if (typeof zdt.getTimeZoneTransition !== "function") {
+    // no transition data: remember this one instant only
+    return { start: exact, end: exact + 1, offset };
+  }
+
+  // the first transition at or after `exact`: look from a millisecond earlier so that a
+  // transition exactly at `exact` is found
+  const upcoming = (
+    exact > -MAX_EPOCH_MS ? zdt.subtract({ milliseconds: 1 }) : zdt
+  ).getTimeZoneTransition("next");
+
+  let start, end;
+  if (upcoming !== null && upcoming.epochMilliseconds === exact) {
+    const following = zdt.getTimeZoneTransition("next");
+    start = exact;
+    end = following ? following.epochMilliseconds : Infinity;
+  } else {
+    end = upcoming ? upcoming.epochMilliseconds : Infinity;
+    // the last transition before `exact`, found by walking forward from a year earlier:
+    // temporal-polyfill answers getTimeZoneTransition("previous") incorrectly beyond its rule
+    // horizon
+    start = Math.max(exact - LOOKBACK_MS, -MAX_EPOCH_MS);
+    let transition = zonedDateTime(start, timeZone).getTimeZoneTransition("next");
+    while (transition !== null && transition.epochMilliseconds < exact) {
+      start = transition.epochMilliseconds;
+      transition = transition.getTimeZoneTransition("next");
+    }
+  }
+
+  // temporal-polyfill's "next" also misses a few historical transitions (Asia/Manila's move
+  // across the date line on 1844-12-31, for one), so the offset is confirmed at both ends of the
+  // window; where it differs, only the queried instant is remembered
+  if (
+    offsetMinutes(zonedDateTime(start, timeZone)) !== offset ||
+    (end !== Infinity && offsetMinutes(zonedDateTime(end - 1, timeZone)) !== offset)
+  ) {
+    return { start: exact, end: exact + 1, offset };
+  }
+  return { start, end, offset };
+}
+
 /**
  * UTC offset in minutes of a Temporal time zone at an epoch millisecond timestamp. Throws a
  * RangeError for unknown identifiers or timestamps outside the representable range.
  */
 export function offsetAt(timeZone, ts) {
-  return offsetMinutes(zonedDateTime(ts, timeZone));
+  // like Date, a fractional timestamp stands for the millisecond it truncates to
+  const exact = Math.trunc(ts);
+  let windows = offsetWindows.get(timeZone);
+  if (windows !== undefined) {
+    for (let i = 0; i < windows.length; i++) {
+      const w = windows[i];
+      if (exact >= w.start && exact < w.end) {
+        if (i > 0) {
+          windows.splice(i, 1);
+          windows.unshift(w);
+        }
+        return w.offset;
+      }
+    }
+  } else {
+    windows = [];
+    offsetWindows.set(timeZone, windows);
+  }
+
+  const w = transitionWindow(timeZone, exact);
+  windows.unshift(w);
+  if (windows.length > WINDOWS_PER_ZONE) windows.pop();
+  return w.offset;
 }
 
 /**

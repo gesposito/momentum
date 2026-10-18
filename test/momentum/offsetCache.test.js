@@ -1,0 +1,106 @@
+/* global test expect describe */
+import { DateTime, IANAZone, Settings } from "../../src/momentum";
+
+// Offsets are served from cached transition windows; they must agree with Temporal exactly,
+// including right at, just before and just after every transition.
+
+const T = globalThis.Temporal;
+const directOffset = (zone, ts) =>
+  T.Instant.fromEpochMilliseconds(ts).toZonedDateTimeISO(zone).offsetNanoseconds / 60000000000;
+
+// a seeded generator (mulberry32), so that a failure reproduces
+function generator(seed) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), seed | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function probes(zone) {
+  const random = generator(20171105),
+    result = [];
+  let current = T.Instant.fromEpochMilliseconds(Date.UTC(1995, 0, 1)).toZonedDateTimeISO(zone);
+  for (let i = 0; i < 200; i++) {
+    const next = current.getTimeZoneTransition("next");
+    if (next === null || next.epochMilliseconds > Date.UTC(2030, 0, 1)) break;
+    const t = next.epochMilliseconds;
+    result.push(t - 1, t, t + 1, t - 3600000, t + 3600000);
+    current = next;
+  }
+  for (let i = 0; i < 300; i++) {
+    result.push(Math.trunc((random() * 2 - 1) * 4e12));
+  }
+  // out of order, so cached windows get reused and evicted
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+describe("cached offsets", () => {
+  for (const zone of ["America/New_York", "Europe/Rome", "Australia/Lord_Howe", "Pacific/Apia"]) {
+    test(`agree with Temporal around every transition of ${zone}`, () => {
+      const iana = IANAZone.create(zone);
+      for (const ts of probes(zone)) {
+        expect(iana.offset(ts)).toBe(directOffset(zone, ts));
+      }
+    });
+  }
+
+  test("include historical local mean time with sub-minute precision", () => {
+    // 1800-01-01 in Rome: LMT +00:49:56
+    expect(IANAZone.create("Europe/Rome").offset(Date.UTC(1800, 0, 1))).toBeCloseTo(49.9333, 3);
+    expect(DateTime.fromMillis(Date.UTC(1800, 0, 1), { zone: "Europe/Rome" }).toISO()).toBe(
+      "1800-01-01T00:49:56.000+00:49"
+    );
+  });
+
+  test("treat a fractional timestamp as the millisecond it truncates to, like Date", () => {
+    // New York left daylight saving time at 06:00 UTC on 1918-10-27. Half a millisecond earlier
+    // truncates toward zero onto the transition itself, whatever the cache holds.
+    const transition = Date.UTC(1918, 9, 27, 6),
+      zone = IANAZone.create("America/New_York");
+    Settings.resetCaches();
+    expect(zone.offset(transition - 0.5)).toBe(-300);
+    Settings.resetCaches();
+    expect(zone.offset(transition - 3600000)).toBe(-240);
+    expect(zone.offset(transition - 0.5)).toBe(-300);
+  });
+
+  test("hold across transitions that temporal-polyfill does not report", () => {
+    // these zones moved across the date line on 1844-12-31, a transition the polyfill's
+    // getTimeZoneTransition("next") skips; a window cached before it must not reach past it
+    const zones = ["Asia/Manila", "Pacific/Guam", "Pacific/Kosrae", "Pacific/Palau"];
+    const instants = [
+      Date.UTC(1844, 0, 1),
+      Date.UTC(1850, 0, 1),
+      Date.UTC(1844, 11, 30, 12),
+      Date.UTC(1845, 6, 1),
+    ];
+    for (const zone of zones) {
+      Settings.resetCaches();
+      const iana = IANAZone.create(zone);
+      for (const ts of instants) {
+        expect(iana.offset(ts)).toBe(directOffset(zone, ts));
+      }
+    }
+  });
+
+  test("survive Settings.resetCaches()", () => {
+    const zone = IANAZone.create("America/New_York"),
+      ts = Date.UTC(2017, 6, 1);
+    expect(zone.offset(ts)).toBe(-240);
+    Settings.resetCaches();
+    expect(IANAZone.create("America/New_York").offset(ts)).toBe(-240);
+    expect(DateTime.now().zoneName).toBe("America/New_York");
+  });
+
+  test("are NaN for invalid zones and unrepresentable instants", () => {
+    expect(IANAZone.create("Fantasia/Castle").offset(0)).toBe(NaN);
+    expect(IANAZone.create("America/New_York").offset(NaN)).toBe(NaN);
+    expect(IANAZone.create("America/New_York").offset(8.64e15 + 1)).toBe(NaN);
+  });
+});

@@ -1,5 +1,10 @@
 import { formatOffset, parseZoneInfo } from "../impl/util.js";
-import { isRangeError, normalizeTimeZoneId, offsetAt } from "../impl/temporal.js";
+import {
+  isRangeError,
+  normalizeTimeZoneId,
+  offsetAt,
+  resetOffsetCache,
+} from "../impl/temporal.js";
 import Zone from "../zone.js";
 
 const ianaZoneCache = new Map();
@@ -52,6 +57,7 @@ export default class IANAZone extends Zone {
   static resetCache() {
     ianaZoneCache.clear();
     normalizedNameCache.clear();
+    resetOffsetCache();
   }
 
   /**
