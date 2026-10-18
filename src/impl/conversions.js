@@ -10,6 +10,9 @@ import {
 } from "./util.js";
 import Invalid from "./invalid.js";
 import { ConflictingSpecificationError } from "../errors.js";
+import { dayOfWeek } from "./calendar.js";
+
+export { dayOfWeek };
 
 const nonLeapLadder = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
   leapLadder = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
@@ -19,18 +22,6 @@ function unitOutOfRange(unit, value) {
     "unit out of range",
     `you specified ${value} (of type ${typeof value}) as a ${unit}, which is invalid`
   );
-}
-
-export function dayOfWeek(year, month, day) {
-  const d = new Date(Date.UTC(year, month - 1, day));
-
-  if (year < 100 && year >= 0) {
-    d.setUTCFullYear(d.getUTCFullYear() - 1900);
-  }
-
-  const js = d.getUTCDay();
-
-  return js === 0 ? 7 : js;
 }
 
 function computeOrdinal(year, month, day) {

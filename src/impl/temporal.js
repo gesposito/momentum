@@ -45,6 +45,10 @@ export function isRangeError(error) {
   );
 }
 
+export function isRepresentableTs(ts) {
+  return Number.isFinite(ts) && Math.abs(ts) <= MAX_EPOCH_MS;
+}
+
 /**
  * Zoned view of an epoch millisecond timestamp. Throws a RangeError for timestamps outside the
  * representable range or for unknown time zone identifiers.

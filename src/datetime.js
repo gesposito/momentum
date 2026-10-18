@@ -17,9 +17,10 @@ import {
   weeksInWeekYear,
   normalizeObject,
   roundTo,
-  objToLocalTS,
   padStart,
 } from "./impl/util.js";
+import { civilFromMs, msFromCivil } from "./impl/calendar.js";
+import { isRepresentableTs } from "./impl/temporal.js";
 import { normalizeZone } from "./impl/zoneUtil.js";
 import diff from "./impl/diff.js";
 import { parseRFC2822Date, parseISODate, parseHTTPDate, parseSQL } from "./impl/regexParser.js";
@@ -127,21 +128,19 @@ function fixOffset(localTS, o, tz) {
   return [localTS - Math.min(o2, o3) * 60 * 1000, Math.max(o2, o3), true];
 }
 
-// convert an epoch timestamp into a calendar object with the given offset
+// convert an epoch timestamp into a calendar object with the given offset. Outside Date's range
+// every field is NaN, which marks the DateTime invalid; as in Luxon, which computes it with Date,
+// the range applies to the local time as well as to the instant
 function tsToObj(ts, offset) {
-  ts += offset * 60 * 1000;
+  const localTS = ts + offset * 60 * 1000;
+  return civilFromMs(isRepresentableTs(ts) && isRepresentableTs(localTS) ? localTS : NaN);
+}
 
-  const d = new Date(ts);
-
-  return {
-    year: d.getUTCFullYear(),
-    month: d.getUTCMonth() + 1,
-    day: d.getUTCDate(),
-    hour: d.getUTCHours(),
-    minute: d.getUTCMinutes(),
-    second: d.getUTCSeconds(),
-    millisecond: d.getUTCMilliseconds(),
-  };
+// convert a calendar object to a local timestamp; NaN outside Date's range, like the Date.UTC()
+// call it replaces
+function objToLocalTS(obj) {
+  const localTS = msFromCivil(obj);
+  return isRepresentableTs(localTS) ? localTS : NaN;
 }
 
 // convert a calendar object to a epoch timestamp
@@ -1461,7 +1460,7 @@ export default class DateTime {
     }
     const dayMs = 86400000;
     const minuteMs = 60000;
-    const localTS = objToLocalTS(this.c);
+    const localTS = msFromCivil(this.c);
     const oEarlier = this.zone.offset(localTS - dayMs);
     const oLater = this.zone.offset(localTS + dayMs);
 
