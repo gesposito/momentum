@@ -2,7 +2,9 @@
 // expectations. Import paths are rewritten from Luxon's entry module to momentum's, and expected
 // strings containing U+202F (narrow no-break space) are compared with Luxon's own
 // `toMatchIgnoringWeirdSpaces` matcher: CLDR puts U+202F between a time and its AM/PM marker,
-// and Node 26 and Bun replace it with a regular space.
+// and Node 26 and Bun replace it with a regular space. `test/helpers.js` mixes ESM imports with
+// CommonJS `exports.x = ...`, which Bun's loader rejects; it becomes a plain ES module with named
+// exports plus a default export object.
 //
 // Usage: bun scripts/sync-tests.ts [path-to-luxon-checkout]   (default: ../luxon)
 
@@ -27,11 +29,21 @@ function rewriteMatchers(text: string): string {
   );
 }
 
+function toESModule(text: string): string {
+  const names: string[] = [];
+  const converted = text.replace(/^exports\.(\w+) = function/gm, (_, name: string) => {
+    names.push(name);
+    return `export function ${name}`;
+  });
+  return `${converted}\nexport default { ${names.join(", ")} };\n`;
+}
+
 const glob = new Bun.Glob("**/*.js");
 let copied = 0;
 for await (const relative of glob.scan({ cwd: sourceDir })) {
   if (skipped.has(relative)) continue;
-  const text = rewriteMatchers(rewriteImports(await Bun.file(join(sourceDir, relative)).text()));
+  let text = rewriteMatchers(rewriteImports(await Bun.file(join(sourceDir, relative)).text()));
+  if (relative === "helpers.js") text = toESModule(text);
   const destination = join(targetDir, relative);
   mkdirSync(dirname(destination), { recursive: true });
   await Bun.write(destination, text);

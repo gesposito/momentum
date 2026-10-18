@@ -2,7 +2,7 @@
 import { DateTime, Settings } from "../src/momentum";
 import { hasLocaleWeekInfo } from "../src/impl/util";
 
-exports.withoutRTF = function (name, f) {
+export function withoutRTF (name, f) {
   const fullName = `With no RelativeTimeFormat support, ${name}`;
   test(fullName, () => {
     const rtf = Intl.RelativeTimeFormat;
@@ -16,7 +16,7 @@ exports.withoutRTF = function (name, f) {
   });
 };
 
-exports.withoutLocaleWeekInfo = function (name, f) {
+export function withoutLocaleWeekInfo (name, f) {
   const fullName = `With no Intl.Locale.weekInfo support, ${name}`;
   test(fullName, () => {
     const l = Intl.Locale;
@@ -30,7 +30,7 @@ exports.withoutLocaleWeekInfo = function (name, f) {
   });
 };
 
-exports.withNow = function (name, dt, f) {
+export function withNow (name, dt, f) {
   test(name, () => {
     const oldNow = Settings.now;
 
@@ -44,7 +44,7 @@ exports.withNow = function (name, dt, f) {
 };
 
 // not a tester!
-exports.withDefaultZone = function (zone, f) {
+export function withDefaultZone (zone, f) {
   try {
     Settings.defaultZone = zone;
     f();
@@ -53,7 +53,7 @@ exports.withDefaultZone = function (zone, f) {
   }
 };
 
-exports.withDefaultLocale = function (locale, f) {
+export function withDefaultLocale (locale, f) {
   try {
     Settings.defaultLocale = locale;
     f();
@@ -62,7 +62,7 @@ exports.withDefaultLocale = function (locale, f) {
   }
 };
 
-exports.setUnset = function (prop) {
+export function setUnset (prop) {
   return (value, f) => {
     const existing = Settings[prop];
     try {
@@ -74,11 +74,11 @@ exports.setUnset = function (prop) {
   };
 };
 
-exports.atHour = function (hour) {
+export function atHour (hour) {
   return DateTime.fromObject({ year: 2017, month: 5, day: 25 }).startOf("day").set({ hour });
 };
 
-exports.cldrMajorVersion = function () {
+export function cldrMajorVersion () {
   try {
     const cldr = process?.versions?.cldr;
     if (cldr) {
@@ -93,9 +93,11 @@ exports.cldrMajorVersion = function () {
   }
 };
 
-exports.supportsMinDaysInFirstWeek = function () {
+export function supportsMinDaysInFirstWeek () {
   if (!hasLocaleWeekInfo()) return false;
   const locale = new Intl.Locale("en-US");
   const wi = locale.getWeekInfo?.() ?? locale.weekInfo;
   return "minimalDays" in wi;
 };
+
+export default { withoutRTF, withoutLocaleWeekInfo, withNow, withDefaultZone, withDefaultLocale, setUnset, atHour, cldrMajorVersion, supportsMinDaysInFirstWeek };
