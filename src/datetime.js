@@ -89,16 +89,18 @@ function possiblyCachedLocalWeekData(dt) {
 // clone really means, "make a new object with these modifications". all "setters" really use this
 // to create a new object while only changing some of the properties
 function clone(inst, alts) {
-  const current = {
-    ts: inst.ts,
-    zone: inst.zone,
-    c: inst.c,
-    o: inst.o,
-    loc: inst.loc,
+  const ts = alts.ts ?? inst.ts,
+    zone = alts.zone ?? inst.zone,
+    unchanged = ts === inst.ts && zone.equals(inst.zone);
+  return new DateTime({
+    ts,
+    zone,
+    loc: alts.loc ?? inst.loc,
     invalid: inst.invalid,
-    wasHole: inst.wasHole,
-  };
-  return new DateTime({ ...current, ...alts, old: current });
+    wasHole: alts.wasHole ?? inst.wasHole,
+    c: alts.c ?? (unchanged ? inst.c : null),
+    o: alts.o ?? (unchanged ? inst.o : null),
+  });
 }
 
 // find the right offset a given local time. The o input is our guess, which determines which
@@ -128,25 +130,34 @@ function fixOffset(localTS, o, tz) {
   return [localTS - Math.min(o2, o3) * 60 * 1000, Math.max(o2, o3), true];
 }
 
-// convert an epoch timestamp into a calendar object with the given offset. Outside Date's range
-// every field is NaN, which marks the DateTime invalid; as in Luxon, which computes it with Date,
-// the range applies to the local time as well as to the instant
-function tsToObj(ts, offset) {
-  const localTS = ts + offset * 60 * 1000;
-  return civilFromMs(isRepresentableTs(ts) && isRepresentableTs(localTS) ? localTS : NaN);
+// calendar fields of an epoch timestamp shifted by an offset (in minutes)
+function fieldsAtOffset(ts, offset) {
+  return civilFromMs(ts + offset * 60 * 1000);
 }
 
-// convert a calendar object to a local timestamp; NaN outside Date's range, like the Date.UTC()
-// call it replaces
-function objToLocalTS(obj) {
-  const localTS = msFromCivil(obj);
-  return isRepresentableTs(localTS) ? localTS : NaN;
+// calendar fields and offset of an epoch timestamp in a zone, or null when not representable.
+// Luxon computes local times with Date, so the local time must be within Date's range too
+function resolveTs(ts, zone) {
+  if (!isRepresentableTs(ts)) return null;
+  const o = zone.offset(ts);
+  if (!Number.isFinite(o) || !isRepresentableTs(ts + o * 60 * 1000)) return null;
+  return { c: fieldsAtOffset(ts, o), o };
 }
 
-// convert a calendar object to a epoch timestamp
-function objToTS(obj, offset, zone) {
-  return fixOffset(objToLocalTS(obj), offset, zone);
+// convert wall-clock fields in a zone to an instant, resolving DST gaps and overlaps.
+// offsetGuess picks the candidate for ambiguous times (when it is one of them)
+function resolveFields(fields, offsetGuess, zone) {
+  // like Luxon's Date.UTC, a wall clock outside Date's range is not representable
+  const localTS = msFromCivil(fields);
+  if (!isRepresentableTs(localTS)) return null;
+  const [ts, o, wasHole] = fixOffset(localTS, offsetGuess, zone);
+  if (!isRepresentableTs(ts) || !Number.isFinite(o) || !isRepresentableTs(ts + o * 60 * 1000)) {
+    return null;
+  }
+  return { ts, o, c: fieldsAtOffset(ts, o), wasHole };
 }
+
+const notRepresentable = { ts: NaN, c: null, o: null, wasHole: false };
 
 // create a new DT instance by adding a duration, adjusting for DSTs
 function adjustTime(inst, dur) {
@@ -173,17 +184,24 @@ function adjustTime(inst, dur) {
       seconds: dur.seconds,
       milliseconds: dur.milliseconds,
     }).as("milliseconds"),
-    localTS = objToLocalTS(c);
+    hasCalendarUnits = c.year !== inst.c.year || c.month !== inst.c.month || c.day !== inst.c.day;
 
-  let [ts, o, wasHole] = fixOffset(localTS, oPre, inst.zone);
-
-  if (millisToAdd !== 0) {
-    ts += millisToAdd;
-    // that could have changed the offset by going over a DST, but we want to keep the ts the same
-    o = inst.zone.offset(ts);
+  let alts;
+  if (hasCalendarUnits) {
+    const resolved = resolveFields(c, oPre, inst.zone);
+    if (resolved === null) return notRepresentable;
+    alts = resolved;
+  } else {
+    alts = { ts: inst.ts, o: oPre, c: inst.c, wasHole: false };
   }
 
-  return { ts, o, wasHole };
+  if (millisToAdd !== 0) {
+    // that could have changed the offset by going over a DST; the fields and offset are
+    // recomputed from the new instant by the constructor
+    alts = { ts: alts.ts + millisToAdd, c: null, o: null, wasHole: alts.wasHole };
+  }
+
+  return alts;
 }
 
 // helper useful in turning the results of parsing into real dates
@@ -444,8 +462,6 @@ function quickDT(obj, opts) {
 
   const loc = Locale.fromObject(opts);
 
-  let ts, o, wasHole;
-
   // assume we have the higher-order units
   if (!isUndefined(obj.year)) {
     for (const u of orderedUnits) {
@@ -460,12 +476,11 @@ function quickDT(obj, opts) {
     }
 
     const offsetProvis = guessOffsetForZone(zone);
-    [ts, o, wasHole] = objToTS(obj, offsetProvis, zone);
-  } else {
-    ts = Settings.now();
+    const resolved = resolveFields(obj, offsetProvis, zone);
+    return new DateTime({ ...(resolved ?? notRepresentable), zone, loc });
   }
 
-  return new DateTime({ ts, zone, loc, o, wasHole });
+  return new DateTime({ ts: Settings.now(), zone, loc });
 }
 
 function diffRelative(start, end, opts) {
@@ -565,19 +580,23 @@ export default class DateTime {
     let c = null;
     let o = null;
     if (!invalid) {
-      const unchanged = config.old && config.old.ts === this.ts && config.old.zone.equals(zone);
-
-      if (unchanged) {
-        c = config.old.c;
-        o = config.old.o;
+      if (config.c != null && config.o != null) {
+        // the caller already resolved the calendar fields and offset for this instant; as in
+        // resolveTs, the local time must be within Date's range
+        if (isRepresentableTs(this.ts + config.o * 60 * 1000)) {
+          c = config.c;
+          o = config.o;
+        } else {
+          invalid = new Invalid("invalid input");
+        }
       } else {
-        // If an offset has been passed and we have not been called from
-        // clone(), we can trust it and avoid the offset calculation.
-        const ot = isNumber(config.o) && !config.old ? config.o : zone.offset(this.ts);
-        c = tsToObj(this.ts, ot);
-        invalid = Number.isNaN(c.year) ? new Invalid("invalid input") : null;
-        c = invalid ? null : c;
-        o = invalid ? null : ot;
+        const resolved = resolveTs(this.ts, zone);
+        if (resolved === null) {
+          invalid = new Invalid("invalid input");
+        } else {
+          c = resolved.c;
+          o = resolved.o;
+        }
       }
     }
 
@@ -842,7 +861,7 @@ export default class DateTime {
     // configure ourselves to deal with gregorian dates or week stuff
     let units,
       defaultValues,
-      objNow = tsToObj(tsNow, offsetProvis);
+      objNow = fieldsAtOffset(tsNow, offsetProvis);
     if (useWeekData) {
       units = orderedWeekUnits;
       defaultValues = defaultWeekUnitValues;
@@ -888,14 +907,12 @@ export default class DateTime {
       ? ordinalToGregorian(normalized)
       : normalized;
 
-    const [tsFinal, offsetFinal, wasHole] = objToTS(gregorian, offsetProvis, zoneToUse),
-      inst = new DateTime({
-        ts: tsFinal,
-        zone: zoneToUse,
-        o: offsetFinal,
-        loc,
-        wasHole,
-      });
+    const resolved = resolveFields(gregorian, offsetProvis, zoneToUse);
+    if (resolved === null) {
+      return DateTime.invalid("invalid input");
+    }
+
+    const inst = new DateTime({ ...resolved, zone: zoneToUse, loc });
 
     // gregorian data + weekday serves only to validate
     if (normalized.weekday && containsGregor && obj.weekday !== inst.weekday) {
@@ -1471,15 +1488,15 @@ export default class DateTime {
     }
     const ts1 = localTS - o1 * minuteMs;
     const ts2 = localTS - o2 * minuteMs;
-    const c1 = tsToObj(ts1, o1);
-    const c2 = tsToObj(ts2, o2);
+    const c1 = fieldsAtOffset(ts1, o1);
+    const c2 = fieldsAtOffset(ts2, o2);
     if (
       c1.hour === c2.hour &&
       c1.minute === c2.minute &&
       c1.second === c2.second &&
       c1.millisecond === c2.millisecond
     ) {
-      return [clone(this, { ts: ts1 }), clone(this, { ts: ts2 })];
+      return [clone(this, { ts: ts1, c: c1, o: o1 }), clone(this, { ts: ts2, c: c2, o: o2 })];
     }
     return [this];
   }
@@ -1594,15 +1611,11 @@ export default class DateTime {
       return this;
     } else if (!zone.isValid) {
       return DateTime.invalid(unsupportedZone(zone));
+    } else if ((keepLocalTime || keepCalendarTime) && this.isValid) {
+      const resolved = resolveFields(this.c, zone.offset(this.ts), zone);
+      return clone(this, { ...(resolved ?? notRepresentable), zone });
     } else {
-      let newTS = this.ts;
-      let wasHole = false;
-      if (keepLocalTime || keepCalendarTime) {
-        const offsetGuess = zone.offset(this.ts);
-        const asObj = this.toObject();
-        [newTS, , wasHole] = objToTS(asObj, offsetGuess, zone);
-      }
-      return clone(this, { ts: newTS, zone, wasHole });
+      return clone(this, { zone, wasHole: false });
     }
   }
 
@@ -1693,8 +1706,8 @@ export default class DateTime {
       }
     }
 
-    const [ts, o, wasHole] = objToTS(mixed, this.o, this.zone);
-    return clone(this, { ts, o, wasHole });
+    const resolved = resolveFields(mixed, this.o, this.zone);
+    return clone(this, resolved ?? notRepresentable);
   }
 
   /**
