@@ -9,11 +9,10 @@ import {
 } from "./util.js";
 import Invalid from "./invalid.js";
 import { ConflictingSpecificationError } from "../errors.js";
-import { dayOfWeek } from "./calendar.js";
+import { isRangeError, plainDate } from "./temporal.js";
+import type { PlainDate } from "./temporal.js";
 import type { GregorianDateTime } from "../types.js";
 import type { TimeObject } from "./util.js";
-
-export { dayOfWeek };
 
 export interface WeekDateTime extends TimeObject {
   weekYear: number;
@@ -31,9 +30,6 @@ export interface WeekSettingsPair {
   startOfWeek: number;
 }
 
-const nonLeapLadder = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
-  leapLadder = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
-
 function unitOutOfRange(unit: string, value: unknown): Invalid {
   return new Invalid(
     "unit out of range",
@@ -41,19 +37,52 @@ function unitOutOfRange(unit: string, value: unknown): Invalid {
   );
 }
 
-function isLeap(year: number): boolean {
-  return daysInYear(year) === 366;
+// The Gregorian calendar repeats every 400 years (146097 days, a whole number of weeks), so the
+// weekday or the month and day of a date in a year beyond Temporal's range (about ±271821) are
+// those of the same date in a year near 2000 that differs by a multiple of 400.
+function cycleShift(year: number): number {
+  return Math.abs(year) > 200000 ? Math.round((year - 2000) / 400) * 400 : 0;
 }
 
-function computeOrdinal(year: number, month: number, day: number): number {
-  return day + (isLeap(year) ? leapLadder : nonLeapLadder)[month - 1];
+/**
+ * ISO weekday (1 = Monday ... 7 = Sunday) of a proleptic Gregorian date, from Temporal. NaN when
+ * the year is not a finite number.
+ */
+export function dayOfWeek(year: number, month: number, day: number): number {
+  if (!Number.isFinite(year)) return NaN;
+  const y = Math.trunc(year);
+  return plainDate(y - cycleShift(y), month, day).dayOfWeek;
 }
 
-function uncomputeOrdinal(year: number, ordinal: number): { month: number; day: number } {
-  const table = isLeap(year) ? leapLadder : nonLeapLadder,
-    month0 = table.findIndex((i) => i < ordinal),
-    day = ordinal - table[month0];
-  return { month: month0 + 1, day };
+// the date of the ordinal-th day of a year, from Temporal. As in Luxon, which hands the ordinal to
+// Date.UTC as a day of January, ordinals past the end of the year roll over into the next one and
+// a fractional ordinal counts its whole days (0.5 is the last day of the previous year); ordinals
+// of 0 or less and unrepresentable dates give NaN fields. Whole 400-year cycles are taken out of
+// the ordinal first, so that Temporal only ever computes dates near the year 2000.
+function ordinalToDate(year: number, ordinal: number): { year: number; month: number; day: number } {
+  if (ordinal > 0 && Number.isFinite(year)) {
+    const days = Math.trunc(ordinal) - 1,
+      cycles = Math.floor(days / 146097),
+      y = Math.trunc(year) + cycles * 400,
+      shift = cycleShift(y);
+    try {
+      const date = plainDate(y - shift, 1, 1).add({ days: days - cycles * 146097 });
+      return { year: date.year + shift, month: date.month, day: date.day };
+    } catch (e) {
+      if (!isRangeError(e)) throw e;
+    }
+  }
+  return { year, month: NaN, day: NaN };
+}
+
+// the ISO calendar date of calendar fields, or null when they are not a representable date
+function isoDate({ year, month, day }: GregorianDateTime): PlainDate | null {
+  try {
+    return plainDate(year, month, day);
+  } catch (e) {
+    if (!isRangeError(e)) throw e;
+    return null;
+  }
 }
 
 export function isoWeekdayToLocal(isoWeekday: number, startOfWeek: number): number {
@@ -64,14 +93,29 @@ export function isoWeekdayToLocal(isoWeekday: number, startOfWeek: number): numb
  * @private
  */
 
-export function gregorianToWeek(
-  gregObj: GregorianDateTime,
+/**
+ * Week data of a Temporal.PlainDate with the time of `time`. ISO weeks (the default settings) are
+ * Temporal's own; Temporal has no locale-dependent weeks, so those keep Luxon's algorithm, fed by
+ * Temporal's day of the year and day of the week.
+ */
+export function plainDateToWeek(
+  date: PlainDate,
+  time: TimeObject,
   minDaysInFirstWeek = 4,
   startOfWeek = 1
 ): WeekDateTime {
-  const { year, month, day } = gregObj,
-    ordinal = computeOrdinal(year, month, day),
-    weekday = isoWeekdayToLocal(dayOfWeek(year, month, day), startOfWeek);
+  if (minDaysInFirstWeek === 4 && startOfWeek === 1) {
+    return {
+      weekYear: date.yearOfWeek as number,
+      weekNumber: date.weekOfYear as number,
+      weekday: date.dayOfWeek,
+      ...timeObject(time),
+    };
+  }
+
+  const year = date.year,
+    ordinal = date.dayOfYear,
+    weekday = isoWeekdayToLocal(date.dayOfWeek, startOfWeek);
 
   let weekNumber = Math.floor((ordinal - weekday + 14 - minDaysInFirstWeek) / 7),
     weekYear;
@@ -86,7 +130,18 @@ export function gregorianToWeek(
     weekYear = year;
   }
 
-  return { weekYear, weekNumber, weekday, ...timeObject(gregObj) };
+  return { weekYear, weekNumber, weekday, ...timeObject(time) };
+}
+
+export function gregorianToWeek(
+  gregObj: GregorianDateTime,
+  minDaysInFirstWeek = 4,
+  startOfWeek = 1
+): WeekDateTime {
+  const date = isoDate(gregObj);
+  return date === null
+    ? { weekYear: NaN, weekNumber: NaN, weekday: NaN, ...timeObject(gregObj) }
+    : plainDateToWeek(date, gregObj, minDaysInFirstWeek, startOfWeek);
 }
 
 export function weekToGregorian(
@@ -111,20 +166,20 @@ export function weekToGregorian(
     year = weekYear;
   }
 
-  const { month, day } = uncomputeOrdinal(year, ordinal);
-  return { year, month, day, ...timeObject(weekData) };
+  return { ...ordinalToDate(year, ordinal), ...timeObject(weekData) };
 }
 
 export function gregorianToOrdinal(gregData: GregorianDateTime): OrdinalDateTime {
-  const { year, month, day } = gregData;
-  const ordinal = computeOrdinal(year, month, day);
-  return { year, ordinal, ...timeObject(gregData) };
+  const date = isoDate(gregData);
+  return {
+    year: gregData.year,
+    ordinal: date === null ? NaN : date.dayOfYear,
+    ...timeObject(gregData),
+  };
 }
 
 export function ordinalToGregorian(ordinalData: OrdinalDateTime): GregorianDateTime {
-  const { year, ordinal } = ordinalData;
-  const { month, day } = uncomputeOrdinal(year, ordinal);
-  return { year, month, day, ...timeObject(ordinalData) };
+  return { ...ordinalToDate(ordinalData.year, ordinalData.ordinal), ...timeObject(ordinalData) };
 }
 
 /**

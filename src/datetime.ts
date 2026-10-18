@@ -12,8 +12,6 @@ import {
   isNumber,
   bestBy,
   daysInMonth,
-  daysInYear,
-  isLeapYear,
   weeksInWeekYear,
   normalizeObject,
   roundTo,
@@ -31,6 +29,7 @@ import {
 } from "./impl/tokenParser.js";
 import {
   gregorianToWeek,
+  plainDateToWeek,
   weekToGregorian,
   gregorianToOrdinal,
   ordinalToGregorian,
@@ -106,6 +105,8 @@ interface DateTimeConfig {
   c?: GregorianDateTime | null;
   /** offset in minutes already known for `ts` in `zone`; trusted only together with `c` */
   o?: number | null;
+  /** Temporal time zone of an existing DateTime whose `c` and `o` (derived or not) are reused */
+  tz?: string | null;
 }
 
 interface CloneAlts {
@@ -155,28 +156,19 @@ function unsupportedZone(zone: Zone): Invalid {
   return new Invalid("unsupported zone", `the zone "${zone.name}" is not supported`);
 }
 
-// A valid DateTime in a built-in zone is an instant (`ts`) in a Temporal time zone (`tz`), that
-// is, a Temporal.ZonedDateTime. Its calendar fields and offset are read from that ZonedDateTime
-// the first time they are needed and cached on the instance; DateTimes that only take part in
-// instant arithmetic and comparisons never pay for it. Custom zones have no Temporal time zone,
-// so their fields are computed up front from the zone's offset (see the constructor).
-function deriveFields(dt: DateTime): void {
-  const zdt = zonedDateTime(dt.ts, dt.tz as string);
-  dt.c = wallClock(zdt);
-  dt.o = offsetMinutes(zdt);
-}
-
-// calendar fields of a valid DateTime in its zone
-function fieldsOf(dt: DateTime): GregorianDateTime {
-  if (dt.c === null) deriveFields(dt);
-  return dt.c as GregorianDateTime;
-}
-
-// offset of a valid DateTime in minutes
-function offsetOf(dt: DateTime): number {
-  if (dt.o === null) deriveFields(dt);
-  return dt.o as number;
-}
+// Accessors for the Temporal-derived state of a valid DateTime (see the private fields of the
+// class), so that the functions of this module can use it. The first DateTime constructed
+// installs them: a class static block would be an import-time side effect, which bundlers
+// answer by keeping the class, and everything it uses, in every bundle.
+let accessorsInstalled = false;
+/** calendar fields in the DateTime's zone, derived on first use */
+let fieldsOf: (dt: DateTime) => GregorianDateTime;
+/** UTC offset in minutes, derived on first use */
+let offsetOf: (dt: DateTime) => number;
+/** calendar date as a Temporal.PlainDate, created on first use */
+let plainDateOf: (dt: DateTime) => PlainDate;
+/** the calendar fields and offset derived so far (null when not yet derived) */
+let derivedSoFar: (dt: DateTime) => { c: GregorianDateTime | null; o: number | null };
 
 // we cache week data on the DT object and this intermediates the cache
 /**
@@ -184,7 +176,7 @@ function offsetOf(dt: DateTime): number {
  */
 function possiblyCachedWeekData(dt: DateTime): WeekDateTime {
   if (dt.weekData === null) {
-    dt.weekData = gregorianToWeek(fieldsOf(dt));
+    dt.weekData = plainDateToWeek(plainDateOf(dt), fieldsOf(dt));
   }
   return dt.weekData;
 }
@@ -194,7 +186,8 @@ function possiblyCachedWeekData(dt: DateTime): WeekDateTime {
  */
 function possiblyCachedLocalWeekData(dt: DateTime): WeekDateTime {
   if (dt.localWeekData === null) {
-    dt.localWeekData = gregorianToWeek(
+    dt.localWeekData = plainDateToWeek(
+      plainDateOf(dt),
       fieldsOf(dt),
       dt.loc.getMinDaysInFirstWeek(),
       dt.loc.getStartOfWeek()
@@ -208,15 +201,18 @@ function possiblyCachedLocalWeekData(dt: DateTime): WeekDateTime {
 function clone(inst: DateTime, alts: CloneAlts): DateTime {
   const ts = alts.ts ?? inst.ts,
     zone = alts.zone ?? inst.zone,
-    unchanged = ts === inst.ts && zone.equals(inst.zone);
+    known = ts === inst.ts && zone.equals(inst.zone) ? derivedSoFar(inst) : null;
   return new DateTime({
     ts,
     zone,
     loc: alts.loc ?? inst.loc,
     invalid: inst.invalid,
     wasHole: alts.wasHole ?? inst.wasHole,
-    c: alts.c ?? (unchanged ? inst.c : null),
-    o: alts.o ?? (unchanged ? inst.o : null),
+    c: alts.c ?? known?.c ?? null,
+    o: alts.o ?? known?.o ?? null,
+    // what the instance has derived, and what it has yet to derive, belongs to its own Temporal
+    // time zone, which the system zone may no longer give (after Settings.resetCaches())
+    tz: known === null ? undefined : inst.tz,
   });
 }
 
@@ -345,11 +341,10 @@ const unknownFields: GregorianDateTime = {
 // time of day; null when not representable
 function shiftDate(inst: DateTime, months: number, days: number): ResolvedLocal | null {
   const c = fieldsOf(inst);
-  let date: PlainDate;
+  let date = plainDateOf(inst);
   try {
     // the day is clamped to the length of the target month (Temporal's "constrain" overflow),
     // which is what Luxon does before it adds days
-    date = plainDate(c.year, c.month, c.day);
     if (months !== 0) date = date.add({ months });
     if (days !== 0) date = date.add({ days });
   } catch (e) {
@@ -786,22 +781,10 @@ const zoneOffsetGuessCache = /* @__PURE__ */ new Map<string, number>();
 export default class DateTime {
   /** @internal epoch milliseconds */
   readonly ts: number;
-  /**
-   * @internal Temporal time zone identifier of the zone; null for custom zones, which only
-   * report offsets, and for invalid DateTimes
-   */
-  readonly tz: string | null;
   /** @internal */
   readonly loc: Locale;
   /** @internal */
   readonly invalid: Invalid | null;
-  /**
-   * @internal calendar fields in the zone, read from the ZonedDateTime on first use
-   * (see deriveFields); null until then and when invalid
-   */
-  c: GregorianDateTime | null;
-  /** @internal offset in minutes, read together with `c` */
-  o: number | null;
   /** @internal */
   weekData: WeekDateTime | null;
   /** @internal */
@@ -810,6 +793,64 @@ export default class DateTime {
   readonly isLuxonDateTime: true;
   private readonly _zone: Zone;
   private readonly _wasHole: boolean;
+  /**
+   * @internal Temporal time zone identifier of the zone; null for custom zones, which only
+   * report offsets, and for invalid DateTimes
+   */
+  readonly tz: string | null;
+
+  // A valid DateTime in a built-in zone is an instant (`ts`) in a Temporal time zone (`tz`), that
+  // is, a Temporal.ZonedDateTime. Its calendar fields and offset are read from that ZonedDateTime
+  // the first time they are needed and cached here, so that DateTimes that only take part in
+  // instant arithmetic and comparisons never pay for it; the calendar date is kept as a
+  // Temporal.PlainDate for the week, ordinal and month-length fields. Custom zones have no
+  // Temporal time zone (`tz` is null): their fields are computed up front from Zone#offset().
+  // The cache is private so that whatever has been derived does not affect deep equality. A
+  // Proxy of a DateTime, or a copy of its own properties, has none of it: the accessors then
+  // derive the state again from `ts`, `tz` and the zone.
+  #c: GregorianDateTime | null;
+  #o: number | null;
+  #pd: PlainDate | null;
+
+  // assigns the module's accessors for the private fields (see fieldsOf)
+  static #installAccessors(): void {
+    const fresh = (dt: DateTime): { c: GregorianDateTime; o: number } => {
+      if (dt.tz === null) {
+        const o = dt.zone.offset(dt.ts);
+        return { c: fieldsAtOffset(dt.ts, o) as GregorianDateTime, o };
+      }
+      const zdt = zonedDateTime(dt.ts, dt.tz);
+      return { c: wallClock(zdt), o: offsetMinutes(zdt) };
+    };
+    const derive = (dt: DateTime): void => {
+      const { c, o } = fresh(dt);
+      dt.#c = c;
+      dt.#o = o;
+    };
+    fieldsOf = (dt) => {
+      if (!(#c in dt)) return fresh(dt).c;
+      if (dt.#c === null) derive(dt);
+      return dt.#c as GregorianDateTime;
+    };
+    offsetOf = (dt) => {
+      if (!(#o in dt)) return fresh(dt).o;
+      if (dt.#o === null) derive(dt);
+      return dt.#o as number;
+    };
+    plainDateOf = (dt) => {
+      if (!(#pd in dt)) {
+        const { year, month, day } = fresh(dt).c;
+        return plainDate(year, month, day);
+      }
+      if (dt.#pd === null) {
+        const { year, month, day } = fieldsOf(dt);
+        dt.#pd = plainDate(year, month, day);
+      }
+      return dt.#pd;
+    };
+    derivedSoFar = (dt) => (#c in dt ? { c: dt.#c, o: dt.#o } : { c: null, o: null });
+    accessorsInstalled = true;
+  }
 
   /**
    * @access private
@@ -831,7 +872,7 @@ export default class DateTime {
       if (!isRepresentableTs(this.ts)) {
         invalid = new Invalid("invalid input");
       } else {
-        tz = temporalZoneId(zone);
+        tz = config.tz !== undefined ? config.tz : temporalZoneId(zone);
         if (config.c != null && config.o != null) {
           // the caller already resolved the calendar fields and offset for this instant
           c = config.c;
@@ -858,15 +899,17 @@ export default class DateTime {
     }
 
     this._zone = zone;
-    this.tz = tz;
     this.loc = config.loc || Locale.create();
     this.invalid = invalid;
     this.weekData = null;
     this.localWeekData = null;
-    this.c = c;
     this._wasHole = config.wasHole || false;
-    this.o = o;
     this.isLuxonDateTime = true;
+    this.tz = tz;
+    this.#c = c;
+    this.#o = o;
+    this.#pd = null;
+    if (!accessorsInstalled) DateTime.#installAccessors();
   }
 
   // CONSTRUCT
@@ -1593,7 +1636,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25).ordinal //=> 145
    */
   get ordinal(): number {
-    return this.isValid ? gregorianToOrdinal(fieldsOf(this)).ordinal : NaN;
+    return this.isValid ? plainDateOf(this).dayOfYear : NaN;
   }
 
   /**
@@ -1731,7 +1774,7 @@ export default class DateTime {
    * @example DateTime.local(2013).isInLeapYear //=> false
    */
   get isInLeapYear(): boolean {
-    return isLeapYear(this.year);
+    return this.isValid && plainDateOf(this).inLeapYear;
   }
 
   /**
@@ -1740,7 +1783,8 @@ export default class DateTime {
    * @example DateTime.local(2016, 3).daysInMonth //=> 31
    */
   get daysInMonth(): number {
-    return daysInMonth(this.year, this.month);
+    // Luxon's arithmetic yields undefined for an invalid DateTime
+    return this.isValid ? plainDateOf(this).daysInMonth : (undefined as unknown as number);
   }
 
   /**
@@ -1749,7 +1793,7 @@ export default class DateTime {
    * @example DateTime.local(2013).daysInYear //=> 365
    */
   get daysInYear(): number {
-    return this.isValid ? daysInYear(this.year) : NaN;
+    return this.isValid ? plainDateOf(this).daysInYear : NaN;
   }
 
   /**
@@ -1914,12 +1958,19 @@ export default class DateTime {
     let mixed: GregorianDateTime;
     if (settingWeekStuff) {
       mixed = weekToGregorian(
-        { ...gregorianToWeek(c, minDaysInFirstWeek, startOfWeek), ...normalized } as WeekDateTime,
+        {
+          ...plainDateToWeek(plainDateOf(this), c, minDaysInFirstWeek, startOfWeek),
+          ...normalized,
+        } as WeekDateTime,
         minDaysInFirstWeek,
         startOfWeek
       );
     } else if (!isUndefined(normalized.ordinal)) {
-      mixed = ordinalToGregorian({ ...gregorianToOrdinal(c), ...normalized } as OrdinalDateTime);
+      mixed = ordinalToGregorian({
+        ...c,
+        ordinal: plainDateOf(this).dayOfYear,
+        ...normalized,
+      } as OrdinalDateTime);
     } else {
       mixed = { ...c, ...normalized } as GregorianDateTime;
 
@@ -2424,9 +2475,7 @@ export default class DateTime {
    * Returns a `Temporal.PlainDate` with the calendar date of this DateTime, or null if it is invalid.
    */
   toPlainDate(): PlainDate | null {
-    if (!this.isValid) return null;
-    const c = fieldsOf(this);
-    return plainDate(c.year, c.month, c.day);
+    return this.isValid ? plainDateOf(this) : null;
   }
 
   /**

@@ -31,3 +31,32 @@ describe("a system zone the time zone database lacks", () => {
     expect(SystemZone.instance.isValid).toBe(true);
   });
 });
+
+// The environment's zone can change at run time (process.env.TZ in Node.js). After
+// Settings.resetCaches(), new DateTimes use the new zone, while existing DateTimes and their
+// clones keep the fields and offset of the zone they were created in.
+describe("a system zone that changes at run time", () => {
+  const T = globalThis.Temporal;
+  let timeZoneId;
+
+  beforeEach(() => {
+    timeZoneId = T.Now.timeZoneId;
+  });
+
+  afterEach(() => {
+    T.Now.timeZoneId = timeZoneId;
+    Settings.resetCaches();
+  });
+
+  test("leaves existing DateTimes and their clones in the old zone", () => {
+    const read = DateTime.fromMillis(0),
+      unread = DateTime.fromMillis(0);
+    expect(read.hour).toBe(19);
+    T.Now.timeZoneId = () => "Europe/Rome";
+    Settings.resetCaches();
+    expect(read.reconfigure({ locale: "fr" }).hour).toBe(19);
+    expect(unread.reconfigure({ locale: "fr" }).hour).toBe(19);
+    expect(unread.hour).toBe(19);
+    expect(DateTime.fromMillis(0).hour).toBe(1);
+  });
+});

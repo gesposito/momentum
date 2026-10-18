@@ -268,6 +268,63 @@ describe("calendar arithmetic", () => {
   });
 });
 
+describe("week, ordinal and month fields", () => {
+  const dt = DateTime.fromObject({ year: 2016, month: 1, day: 1 }, { zone: "UTC" });
+
+  test("come from Temporal.PlainDate", () => {
+    expect([dt.weekYear, dt.weekNumber, dt.weekday, dt.ordinal]).toEqual([2015, 53, 5, 1]);
+    expect([dt.daysInMonth, dt.daysInYear, dt.isInLeapYear, dt.weeksInWeekYear]).toEqual([
+      31,
+      366,
+      true,
+      53,
+    ]);
+    expect(dt.toPlainDate().toString()).toBe("2016-01-01");
+    const sat = DateTime.fromObject({ year: 2022, month: 1, day: 1 }, { zone: "UTC" }).reconfigure({
+      weekSettings: { firstDay: 7, minimalDays: 1, weekend: [6, 7] },
+    });
+    expect([sat.localWeekYear, sat.localWeekNumber, sat.localWeekday]).toEqual([2022, 1, 7]);
+  });
+
+  test("week and ordinal dates beyond Temporal's range are still validated", () => {
+    expect(DateTime.fromObject({ weekYear: 300000, weekNumber: 1 }).invalidReason).toBe(
+      "invalid input"
+    );
+    expect(DateTime.fromObject({ weekYear: 300000, weekNumber: 54 }).invalidReason).toBe(
+      "unit out of range"
+    );
+    expect(DateTime.fromObject({ year: 300000, ordinal: 1 }).invalidReason).toBe("invalid input");
+  });
+
+  test("ordinals roll over like Luxon's, which rejects those of 0 or less", () => {
+    expect(dt.set({ ordinal: 400 }).toISODate()).toBe("2017-02-03");
+    expect(dt.set({ weekNumber: 60 }).toISODate()).toBe("2016-02-19");
+    expect(dt.set({ ordinal: 0 }).invalidReason).toBe("invalid input");
+    expect(dt.set({ ordinal: 1e12 }).invalidReason).toBe("invalid input");
+  });
+
+  test("invalid DateTimes have none", () => {
+    const invalid = DateTime.invalid("because");
+    expect([invalid.weekNumber, invalid.ordinal, invalid.daysInYear]).toEqual([NaN, NaN, NaN]);
+    expect(invalid.daysInMonth).toBe(undefined);
+    expect(invalid.isInLeapYear).toBe(false);
+    expect(invalid.toPlainDate()).toBe(null);
+  });
+});
+
+describe("Temporal-derived state", () => {
+  test("does not affect deep equality", () => {
+    const resolved = DateTime.local(2017, 5, 15, 10),
+      fromInstant = DateTime.fromMillis(resolved.toMillis());
+    expect(resolved).toEqual(fromInstant);
+    void resolved.ordinal;
+    void fromInstant.hour;
+    expect(resolved).toEqual(fromInstant);
+    expect(Object.keys(resolved).sort()).toEqual(Object.keys(fromInstant).sort());
+    expect(resolved).not.toEqual(fromInstant.plus(1));
+  });
+});
+
 describe("custom zones", () => {
   const zone = new Switching2017Zone(),
     reference = "America/New_York";
