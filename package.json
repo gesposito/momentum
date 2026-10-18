@@ -50,6 +50,8 @@
     "benchmark": "bun run build:js && bun benchmarks/index.ts",
     "benchmark:compare": "bun run build:js && bun benchmarks/index.ts --compare",
     "benchmark:node": "bun run build:js && node --expose-gc benchmarks/index.ts --compare",
+    "benchmark:memory": "bun run build:js && bun benchmarks/memory.ts",
+    "benchmark:memory:node": "bun run build:js && node --expose-gc benchmarks/memory.ts",
     "sync-tests": "bun scripts/sync-tests.ts",
     "prepack": "bun run build"
   },
