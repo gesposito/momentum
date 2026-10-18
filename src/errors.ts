@@ -1,15 +1,15 @@
-// these aren't really private, but nor are they really useful to document
+// These aren't really private, but nor are they really useful to document.
+
+/**
+ * Base class of every error thrown by momentum.
+ */
+export class MomentumError extends Error {}
 
 /**
  * @private
  */
-class LuxonError extends Error {}
-
-/**
- * @private
- */
-export class InvalidDateTimeError extends LuxonError {
-  constructor(reason) {
+export class InvalidDateTimeError extends MomentumError {
+  constructor(reason: { toMessage(): string }) {
     super(`Invalid DateTime: ${reason.toMessage()}`);
   }
 }
@@ -17,8 +17,8 @@ export class InvalidDateTimeError extends LuxonError {
 /**
  * @private
  */
-export class InvalidIntervalError extends LuxonError {
-  constructor(reason) {
+export class InvalidIntervalError extends MomentumError {
+  constructor(reason: { toMessage(): string }) {
     super(`Invalid Interval: ${reason.toMessage()}`);
   }
 }
@@ -26,8 +26,8 @@ export class InvalidIntervalError extends LuxonError {
 /**
  * @private
  */
-export class InvalidDurationError extends LuxonError {
-  constructor(reason) {
+export class InvalidDurationError extends MomentumError {
+  constructor(reason: { toMessage(): string }) {
     super(`Invalid Duration: ${reason.toMessage()}`);
   }
 }
@@ -35,13 +35,13 @@ export class InvalidDurationError extends LuxonError {
 /**
  * @private
  */
-export class ConflictingSpecificationError extends LuxonError {}
+export class ConflictingSpecificationError extends MomentumError {}
 
 /**
  * @private
  */
-export class InvalidUnitError extends LuxonError {
-  constructor(unit) {
+export class InvalidUnitError extends MomentumError {
+  constructor(unit: string) {
     super(`Invalid unit ${unit}`);
   }
 }
@@ -49,12 +49,12 @@ export class InvalidUnitError extends LuxonError {
 /**
  * @private
  */
-export class InvalidArgumentError extends LuxonError {}
+export class InvalidArgumentError extends MomentumError {}
 
 /**
  * @private
  */
-export class ZoneIsAbstractError extends LuxonError {
+export class ZoneIsAbstractError extends MomentumError {
   constructor() {
     super("Zone is an abstract class");
   }
@@ -64,7 +64,7 @@ export class ZoneIsAbstractError extends LuxonError {
  * Thrown when the runtime has no `Temporal` global. Either run on an engine that ships Temporal,
  * or import a polyfill first (for example `import "momentum/polyfill"`).
  */
-export class TemporalUnavailableError extends LuxonError {
+export class TemporalUnavailableError extends MomentumError {
   constructor() {
     super(
       "Temporal is not available in this environment. Import a polyfill before using momentum, e.g. `import \"momentum/polyfill\"`."

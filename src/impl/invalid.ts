@@ -1,10 +1,13 @@
 export default class Invalid {
-  constructor(reason, explanation) {
+  readonly reason: string;
+  readonly explanation: string | null;
+
+  constructor(reason: string, explanation: string | null = null) {
     this.reason = reason;
     this.explanation = explanation;
   }
 
-  toMessage() {
+  toMessage(): string {
     if (this.explanation) {
       return `${this.reason}: ${this.explanation}`;
     } else {

@@ -1,7 +1,8 @@
 import { formatOffset, signedOffset } from "../impl/util.js";
 import Zone from "../zone.js";
+import type { ZoneOffsetFormat } from "../types.js";
 
-let singleton = null;
+let singleton: FixedOffsetZone | null = null;
 
 /**
  * A zone with a fixed offset (meaning no DST)
@@ -10,9 +11,8 @@ let singleton = null;
 export default class FixedOffsetZone extends Zone {
   /**
    * Get a singleton instance of UTC
-   * @return {FixedOffsetZone}
    */
-  static get utcInstance() {
+  static get utcInstance(): FixedOffsetZone {
     if (singleton === null) {
       singleton = new FixedOffsetZone(0);
     }
@@ -21,22 +21,20 @@ export default class FixedOffsetZone extends Zone {
 
   /**
    * Get an instance with a specified offset
-   * @param {number} offset - The offset in minutes
-   * @return {FixedOffsetZone}
+   * @param offset - The offset in minutes
    */
-  static instance(offset) {
+  static instance(offset: number): FixedOffsetZone {
     return offset === 0 ? FixedOffsetZone.utcInstance : new FixedOffsetZone(offset);
   }
 
   /**
    * Get an instance of FixedOffsetZone from a UTC offset string, like "UTC+6"
-   * @param {string} s - The offset string to parse
+   * @param s - The offset string to parse
    * @example FixedOffsetZone.parseSpecifier("UTC+6")
    * @example FixedOffsetZone.parseSpecifier("UTC+06")
    * @example FixedOffsetZone.parseSpecifier("UTC-6:00")
-   * @return {FixedOffsetZone}
    */
-  static parseSpecifier(s) {
+  static parseSpecifier(s: string | null | undefined): FixedOffsetZone | null {
     if (s) {
       const r = s.match(/^utc(?:([+-]\d{1,2})(?::(\d{2}))?)?$/i);
       if (r) {
@@ -46,40 +44,35 @@ export default class FixedOffsetZone extends Zone {
     return null;
   }
 
-  constructor(offset) {
+  /** The fixed offset in minutes. @internal */
+  readonly fixed: number;
+  private readonly valid: boolean;
+
+  constructor(offset: number) {
     super();
-    /** @private **/
     this.fixed = offset;
-    /** @private **/
     this.valid = Number.isInteger(offset);
   }
 
   /**
    * The type of zone. `fixed` for all instances of `FixedOffsetZone`.
-   * @override
-   * @type {string}
    */
-  get type() {
+  override get type(): string {
     return "fixed";
   }
 
   /**
    * The name of this zone.
    * All fixed zones' names always start with "UTC" (plus optional offset)
-   * @override
-   * @type {string}
    */
-  get name() {
+  override get name(): string {
     return this.fixed === 0 ? "UTC" : `UTC${formatOffset(this.fixed, "narrow")}`;
   }
 
   /**
    * The IANA name of this zone, i.e. `Etc/UTC` or `Etc/GMT+/-nn`
-   *
-   * @override
-   * @type {string}
    */
-  get ianaName() {
+  override get ianaName(): string {
     if (this.fixed === 0) {
       return "Etc/UTC";
     } else {
@@ -91,31 +84,26 @@ export default class FixedOffsetZone extends Zone {
    * Returns the offset's common name at the specified timestamp.
    *
    * For fixed offset zones this equals to the zone name.
-   * @override
    */
-  offsetName() {
+  override offsetName(): string {
     return this.name;
   }
 
   /**
    * Returns the offset's value as a string
-   * @override
-   * @param {number} ts - Epoch milliseconds for which to get the offset
-   * @param {string} format - What style of offset to return.
-   *                          Accepts 'narrow', 'short', or 'techie'. Returning '+6', '+06:00', or '+0600' respectively
-   * @return {string}
+   * @param ts - Epoch milliseconds for which to get the offset
+   * @param format - What style of offset to return.
+   *                 Accepts 'narrow', 'short', or 'techie'. Returning '+6', '+06:00', or '+0600' respectively
    */
-  formatOffset(ts, format) {
+  override formatOffset(ts: number, format: ZoneOffsetFormat): string {
     return formatOffset(this.fixed, format);
   }
 
   /**
    * Returns whether the offset is known to be fixed for the whole year:
    * Always returns true for all fixed offset zones.
-   * @override
-   * @type {boolean}
    */
-  get isUniversal() {
+  override get isUniversal(): boolean {
     return true;
   }
 
@@ -123,30 +111,24 @@ export default class FixedOffsetZone extends Zone {
    * Return the offset in minutes for this zone at the specified timestamp.
    *
    * For fixed offset zones, this is constant and does not depend on a timestamp.
-   * @override
-   * @return {number}
    */
-  offset() {
+  override offset(): number {
     return this.fixed;
   }
 
   /**
    * Return whether this Zone is equal to another zone (i.e. also fixed and same offset)
-   * @override
-   * @param {Zone} otherZone - the zone to compare
-   * @return {boolean}
+   * @param otherZone - the zone to compare
    */
-  equals(otherZone) {
-    return otherZone.type === "fixed" && otherZone.fixed === this.fixed;
+  override equals(otherZone: Zone): boolean {
+    return otherZone.type === "fixed" && (otherZone as FixedOffsetZone).fixed === this.fixed;
   }
 
   /**
    * Return whether this Zone is valid:
    * All fixed offset zones are valid, provided they were constructed with a numeric offset.
-   * @override
-   * @type {boolean}
    */
-  get isValid() {
+  override get isValid(): boolean {
     return this.valid;
   }
 }

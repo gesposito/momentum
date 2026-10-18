@@ -1,4 +1,4 @@
-const numberingSystems = {
+const numberingSystems: Record<string, string> = {
   arab: "[\u0660-\u0669]",
   arabext: "[\u06F0-\u06F9]",
   bali: "[\u1B50-\u1B59]",
@@ -22,13 +22,13 @@ const numberingSystems = {
   latn: "\\d",
 };
 
-const numberingSystemsUTF16 = {
+const numberingSystemsUTF16: Record<string, [number, number]> = {
   arab: [1632, 1641],
   arabext: [1776, 1785],
   bali: [6992, 7001],
   beng: [2534, 2543],
   deva: [2406, 2415],
-  fullwide: [65296, 65303],
+  fullwide: [65296, 65305],
   gujr: [2790, 2799],
   khmr: [6112, 6121],
   knda: [3302, 3311],
@@ -46,37 +46,40 @@ const numberingSystemsUTF16 = {
 
 const hanidecChars = numberingSystems.hanidec.replace(/[\[|\]]/g, "").split("");
 
-export function parseDigits(str) {
-  let value = parseInt(str, 10);
+export function parseDigits(str: string): number {
+  const value = parseInt(str, 10);
   if (isNaN(value)) {
-    value = "";
+    let digits = "";
     for (let i = 0; i < str.length; i++) {
       const code = str.charCodeAt(i);
 
       if (str[i].search(numberingSystems.hanidec) !== -1) {
-        value += hanidecChars.indexOf(str[i]);
+        digits += hanidecChars.indexOf(str[i]);
       } else {
         for (const key in numberingSystemsUTF16) {
           const [min, max] = numberingSystemsUTF16[key];
           if (code >= min && code <= max) {
-            value += code - min;
+            digits += code - min;
           }
         }
       }
     }
-    return parseInt(value, 10);
+    return parseInt(digits, 10);
   } else {
     return value;
   }
 }
 
 // cache of {numberingSystem: {append: regex}}
-const digitRegexCache = new Map();
-export function resetDigitRegexCache() {
+const digitRegexCache = new Map<string, Map<string, RegExp>>();
+export function resetDigitRegexCache(): void {
   digitRegexCache.clear();
 }
 
-export function digitRegex({ numberingSystem }, append = "") {
+export function digitRegex(
+  { numberingSystem }: { numberingSystem: string | null },
+  append = ""
+): RegExp {
   const ns = numberingSystem || "latn";
 
   let appendCache = digitRegexCache.get(ns);

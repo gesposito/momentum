@@ -1,8 +1,23 @@
 import * as English from "./english.js";
 import * as Formats from "./formats.js";
 import { padStart } from "./util.js";
+import type Locale from "./locale.js";
+import type DateTime from "../datetime.js";
+import type Duration from "../duration.js";
+import type Interval from "../interval.js";
+import type { DurationUnit, FormatToken, StringUnitLength, UnitLength } from "../types.js";
 
-function stringifyTokens(splits, tokenToString) {
+export interface FormatterOptions extends Intl.DateTimeFormatOptions {
+  forceSimple?: boolean;
+  allowZ?: boolean;
+  floor?: boolean;
+  round?: boolean;
+  signMode?: "negative" | "all" | "negativeLargestOnly";
+  padTo?: number;
+  signDisplay?: Intl.NumberFormatOptions["signDisplay"];
+}
+
+function stringifyTokens(splits: FormatToken[], tokenToString: (token: string) => string): string {
   let s = "";
   for (const token of splits) {
     if (token.literal) {
@@ -14,7 +29,7 @@ function stringifyTokens(splits, tokenToString) {
   return s;
 }
 
-const macroTokenToFormatOpts = {
+const macroTokenToFormatOpts: Record<string, Intl.DateTimeFormatOptions> = {
   D: Formats.DATE_SHORT,
   DD: Formats.DATE_MED,
   DDD: Formats.DATE_FULL,
@@ -42,18 +57,18 @@ const macroTokenToFormatOpts = {
  */
 
 export default class Formatter {
-  static create(locale, opts = {}) {
+  static create(locale: Locale, opts: FormatterOptions = {}): Formatter {
     return new Formatter(locale, opts);
   }
 
-  static parseFormat(fmt) {
+  static parseFormat(fmt: string): FormatToken[] {
     // white-space is always considered a literal in user-provided formats
     // the " " token has a special meaning (see unitForToken)
 
-    let current = null,
+    let current: string | null = null,
       currentFull = "",
       bracketed = false;
-    const splits = [];
+    const splits: FormatToken[] = [];
     for (let i = 0; i < fmt.length; i++) {
       const c = fmt.charAt(i);
       if (c === "'") {
@@ -87,17 +102,21 @@ export default class Formatter {
     return splits;
   }
 
-  static macroTokenToFormatOpts(token) {
+  static macroTokenToFormatOpts(token: string): Intl.DateTimeFormatOptions | undefined {
     return macroTokenToFormatOpts[token];
   }
 
-  constructor(locale, formatOpts) {
+  readonly opts: FormatterOptions;
+  readonly loc: Locale;
+  private systemLoc: Locale | null;
+
+  constructor(locale: Locale, formatOpts: FormatterOptions) {
     this.opts = formatOpts;
     this.loc = locale;
     this.systemLoc = null;
   }
 
-  formatWithSystemDefault(dt, opts) {
+  formatWithSystemDefault(dt: DateTime, opts: Intl.DateTimeFormatOptions): string {
     if (this.systemLoc === null) {
       this.systemLoc = this.loc.redefaultToSystem();
     }
@@ -105,34 +124,37 @@ export default class Formatter {
     return df.format();
   }
 
-  dtFormatter(dt, opts = {}) {
+  dtFormatter(dt: DateTime, opts: Intl.DateTimeFormatOptions = {}) {
     return this.loc.dtFormatter(dt, { ...this.opts, ...opts });
   }
 
-  formatDateTime(dt, opts) {
+  formatDateTime(dt: DateTime, opts?: Intl.DateTimeFormatOptions): string {
     return this.dtFormatter(dt, opts).format();
   }
 
-  formatDateTimeParts(dt, opts) {
+  formatDateTimeParts(dt: DateTime, opts?: Intl.DateTimeFormatOptions): Intl.DateTimeFormatPart[] {
     return this.dtFormatter(dt, opts).formatToParts();
   }
 
-  formatInterval(interval, opts) {
-    const df = this.dtFormatter(interval.start, opts);
-    return df.dtf.formatRange(interval.start.toJSDate(), interval.end.toJSDate());
+  formatInterval(interval: Interval, opts?: Intl.DateTimeFormatOptions): string {
+    const df = this.dtFormatter(interval.start as DateTime, opts);
+    return df.dtf.formatRange(
+      (interval.start as DateTime).toJSDate(),
+      (interval.end as DateTime).toJSDate()
+    );
   }
 
-  resolvedOptions(dt, opts) {
+  resolvedOptions(dt: DateTime, opts?: Intl.DateTimeFormatOptions): Intl.ResolvedDateTimeFormatOptions {
     return this.dtFormatter(dt, opts).resolvedOptions();
   }
 
-  num(n, p = 0, signDisplay = undefined) {
+  num(n: number | string, p = 0, signDisplay?: Intl.NumberFormatOptions["signDisplay"]): string {
     // we get some perf out of doing this here, annoyingly
     if (this.opts.forceSimple) {
       return padStart(n, p);
     }
 
-    const opts = { ...this.opts };
+    const opts: FormatterOptions = { ...this.opts };
 
     if (p > 0) {
       opts.padTo = p;
@@ -141,14 +163,15 @@ export default class Formatter {
       opts.signDisplay = signDisplay;
     }
 
-    return this.loc.numberFormatter(opts).format(n);
+    return this.loc.numberFormatter(opts).format(n as number);
   }
 
-  formatDateTimeFromString(dt, fmt) {
+  formatDateTimeFromString(dt: DateTime, fmt: string): string {
     const knownEnglish = this.loc.listingMode() === "en",
       useDateTimeFormatter = this.loc.outputCalendar && this.loc.outputCalendar !== "gregory",
-      string = (opts, extract) => this.loc.extract(dt, opts, extract),
-      formatOffset = (opts) => {
+      string = (opts: Intl.DateTimeFormatOptions, extract: string) =>
+        this.loc.extract(dt, opts, extract) as string,
+      formatOffset = (opts: { format: "narrow" | "short" | "techie"; allowZ?: boolean }) => {
         if (dt.isOffsetFixed && dt.offset === 0 && opts.allowZ) {
           return "Z";
         }
@@ -159,18 +182,18 @@ export default class Formatter {
         knownEnglish
           ? English.meridiemForDateTime(dt)
           : string({ hour: "numeric", hourCycle: "h12" }, "dayperiod"),
-      month = (length, standalone) =>
+      month = (length: UnitLength, standalone: boolean) =>
         knownEnglish
           ? English.monthForDateTime(dt, length)
           : string(standalone ? { month: length } : { month: length, day: "numeric" }, "month"),
-      weekday = (length, standalone) =>
+      weekday = (length: StringUnitLength, standalone: boolean) =>
         knownEnglish
           ? English.weekdayForDateTime(dt, length)
           : string(
               standalone ? { weekday: length } : { weekday: length, month: "long", day: "numeric" },
               "weekday"
             ),
-      maybeMacro = (token) => {
+      maybeMacro = (token: string) => {
         const formatOpts = Formatter.macroTokenToFormatOpts(token);
         if (formatOpts) {
           return this.formatWithSystemDefault(dt, formatOpts);
@@ -178,9 +201,9 @@ export default class Formatter {
           return token;
         }
       },
-      era = (length) =>
+      era = (length: StringUnitLength) =>
         knownEnglish ? English.eraForDateTime(dt, length) : string({ era: length }, "era"),
-      tokenToString = (token) => {
+      tokenToString = (token: string): string => {
         // Where possible: https://cldr.unicode.org/translation/date-time/date-time-symbols
         switch (token) {
           // ms
@@ -226,14 +249,14 @@ export default class Formatter {
             return formatOffset({ format: "techie", allowZ: this.opts.allowZ });
           case "ZZZZ":
             // like EST
-            return dt.zone.offsetName(dt.ts, { format: "short", locale: this.loc.locale });
+            return dt.zone.offsetName(dt.ts, { format: "short", locale: this.loc.locale }) as string;
           case "ZZZZZ":
             // like Eastern Standard Time
-            return dt.zone.offsetName(dt.ts, { format: "long", locale: this.loc.locale });
+            return dt.zone.offsetName(dt.ts, { format: "long", locale: this.loc.locale }) as string;
           // zone
           case "z":
             // like America/New_York
-            return dt.zoneName;
+            return dt.zoneName as string;
           // meridiems
           case "a":
             return meridiem();
@@ -374,9 +397,9 @@ export default class Formatter {
     return stringifyTokens(Formatter.parseFormat(fmt), tokenToString);
   }
 
-  formatDurationFromString(dur, fmt) {
+  formatDurationFromString(dur: Duration, fmt: string): string {
     const invertLargest = this.opts.signMode === "negativeLargestOnly" ? -1 : 1;
-    const tokenToField = (token) => {
+    const tokenToField = (token: string): DurationUnit | null => {
         switch (token[0]) {
           case "S":
             return "milliseconds";
@@ -398,47 +421,51 @@ export default class Formatter {
             return null;
         }
       },
-      tokenToString = (lildur, info) => (token) => {
-        const mapped = tokenToField(token);
-        if (mapped) {
-          const inversionFactor =
-            info.isNegativeDuration && mapped !== info.largestUnit ? invertLargest : 1;
-          let signDisplay;
-          if (this.opts.signMode === "negativeLargestOnly" && mapped !== info.largestUnit) {
-            signDisplay = "never";
-          } else if (this.opts.signMode === "all") {
-            signDisplay = "always";
+      tokenToString =
+        (lildur: Duration, info: { isNegativeDuration: boolean; largestUnit: string }) =>
+        (token: string): string => {
+          const mapped = tokenToField(token);
+          if (mapped) {
+            const inversionFactor =
+              info.isNegativeDuration && mapped !== info.largestUnit ? invertLargest : 1;
+            let signDisplay: Intl.NumberFormatOptions["signDisplay"];
+            if (this.opts.signMode === "negativeLargestOnly" && mapped !== info.largestUnit) {
+              signDisplay = "never";
+            } else if (this.opts.signMode === "all") {
+              signDisplay = "always";
+            } else {
+              // "auto" and "negative" are the same, but "auto" has better support
+              signDisplay = "auto";
+            }
+            let value = lildur.get(mapped) * inversionFactor;
+            // When the negative sign is only shown on the largest unit (signMode
+            // "negativeLargestOnly") and that unit rounds to zero, "auto" sign display
+            // would drop the sign entirely (positive zero formats without a sign),
+            // making a negative duration indistinguishable from a positive one. Use
+            // negative zero so the sign is preserved on the largest unit.
+            if (
+              this.opts.signMode === "negativeLargestOnly" &&
+              mapped === info.largestUnit &&
+              info.isNegativeDuration &&
+              value === 0
+            ) {
+              value = -0;
+            }
+            return this.num(value, token.length, signDisplay);
           } else {
-            // "auto" and "negative" are the same, but "auto" has better support
-            signDisplay = "auto";
+            return token;
           }
-          let value = lildur.get(mapped) * inversionFactor;
-          // When the negative sign is only shown on the largest unit (signMode
-          // "negativeLargestOnly") and that unit rounds to zero, "auto" sign display
-          // would drop the sign entirely (positive zero formats without a sign),
-          // making a negative duration indistinguishable from a positive one. Use
-          // negative zero so the sign is preserved on the largest unit.
-          if (
-            this.opts.signMode === "negativeLargestOnly" &&
-            mapped === info.largestUnit &&
-            info.isNegativeDuration &&
-            value === 0
-          ) {
-            value = -0;
-          }
-          return this.num(value, token.length, signDisplay);
-        } else {
-          return token;
-        }
-      },
+        },
       tokens = Formatter.parseFormat(fmt),
-      realTokens = tokens.reduce(
+      realTokens = tokens.reduce<string[]>(
         (found, { literal, val }) => (literal ? found : found.concat(val)),
         []
       ),
-      collapsed = dur.shiftTo(...realTokens.map(tokenToField).filter((t) => t)),
+      collapsed = dur.shiftTo(
+        ...(realTokens.map(tokenToField).filter((t) => t) as DurationUnit[])
+      ),
       durationInfo = {
-        isNegativeDuration: collapsed < 0,
+        isNegativeDuration: collapsed.valueOf() < 0,
         // this relies on "collapsed" being based on "shiftTo", which builds up the object
         // in order
         largestUnit: Object.keys(collapsed.values)[0],

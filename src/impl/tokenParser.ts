@@ -5,27 +5,41 @@ import IANAZone from "../zones/IANAZone.js";
 import DateTime from "../datetime.js";
 import { digitRegex, parseDigits } from "./digits.js";
 import { ConflictingSpecificationError } from "../errors.js";
+import type Locale from "./locale.js";
+import type Zone from "../zone.js";
+import type { DateObjectUnits, ExplainedFormat, FormatToken } from "../types.js";
 
 const MISSING_FTP = "missing Intl.DateTimeFormat.formatToParts support";
 
-function intUnit(regex, post = (i) => i) {
+type Matches = Record<string, number | string>;
+
+interface Unit {
+  regex: RegExp;
+  deser: (groups: string[]) => number | string;
+  groups?: number;
+  literal?: boolean;
+  token?: FormatToken;
+  invalidReason?: string;
+}
+
+function intUnit(regex: RegExp, post: (i: number) => number = (i) => i): Unit {
   return { regex, deser: ([s]) => post(parseDigits(s)) };
 }
 
-function fixListRegex(s) {
+function fixListRegex(s: string): string {
   return s
     .replace(/\./g, "\\.?") // make dots optional and also make them literal
     .replace(/\s/g, "\\s"); // make all whitespace literals into any-whitespace-here markers
 }
 
-function stripInsensitivities(s) {
+function stripInsensitivities(s: string): string {
   return s
     .replace(/\./g, "") // ignore dots that were made optional
     .replace(/\s/g, " ") // replace other whitespace with simple spaces
     .toLowerCase();
 }
 
-function oneOf(strings, startIndex) {
+function oneOf(strings: string[] | null, startIndex: number): Unit | null {
   if (strings === null) {
     return null;
   } else {
@@ -37,24 +51,24 @@ function oneOf(strings, startIndex) {
   }
 }
 
-function offset(regex, groups) {
+function offset(regex: RegExp, groups: number): Unit {
   return { regex, deser: ([, h, m]) => signedOffset(h, m), groups };
 }
 
-function simple(regex) {
+function simple(regex: RegExp): Unit {
   return { regex, deser: ([s]) => s };
 }
 
-function escapeToken(value) {
+function escapeToken(value: string): string {
   return value.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, "\\$&");
 }
 
 /**
  * @param token
- * @param {Locale} loc
+ * @param loc
  * @ignore
  */
-function unitForToken(token, loc) {
+function unitForToken(token: FormatToken, loc: Locale): Unit {
   const one = digitRegex(loc),
     two = digitRegex(loc, "{2}"),
     three = digitRegex(loc, "{3}"),
@@ -66,8 +80,12 @@ function unitForToken(token, loc) {
     oneToNine = digitRegex(loc, "{1,9}"),
     twoToFour = digitRegex(loc, "{2,4}"),
     fourToSix = digitRegex(loc, "{4,6}"),
-    literal = (t) => ({ regex: RegExp(escapeToken(t.val)), deser: ([s]) => s, literal: true }),
-    unitate = (t) => {
+    literal = (t: FormatToken): Unit => ({
+      regex: RegExp(escapeToken(t.val)),
+      deser: ([s]) => s,
+      literal: true,
+    }),
+    unitate = (t: FormatToken): Unit | null => {
       if (token.literal) {
         return literal(t);
       }
@@ -190,7 +208,9 @@ function unitForToken(token, loc) {
       }
     };
 
-  const unit = unitate(token) || {
+  const unit: Unit = unitate(token) || {
+    regex: /(?:)/,
+    deser: ([s]) => s,
     invalidReason: MISSING_FTP,
   };
 
@@ -199,7 +219,7 @@ function unitForToken(token, loc) {
   return unit;
 }
 
-const partTypeStyleToTokenVal = {
+const partTypeStyleToTokenVal: Record<string, string | Record<string, string>> = {
   year: {
     "2-digit": "yy",
     numeric: "yyyyy",
@@ -242,7 +262,11 @@ const partTypeStyleToTokenVal = {
   },
 };
 
-function tokenForPart(part, formatOpts, resolvedOpts) {
+function tokenForPart(
+  part: Intl.DateTimeFormatPart,
+  formatOpts: Intl.DateTimeFormatOptions,
+  resolvedOpts: Intl.ResolvedDateTimeFormatOptions
+): FormatToken | undefined {
   const { type, value } = part;
 
   if (type === "literal") {
@@ -253,12 +277,12 @@ function tokenForPart(part, formatOpts, resolvedOpts) {
     };
   }
 
-  const style = formatOpts[type];
+  const style = (formatOpts as Record<string, unknown>)[type] as string;
 
   // The user might have explicitly specified hour12 or hourCycle
   // if so, respect their decision
   // if not, refer back to the resolvedOpts, which are based on the locale
-  let actualType = type;
+  let actualType: string = type;
   if (type === "hour") {
     if (formatOpts.hour12 != null) {
       actualType = formatOpts.hour12 ? "hour12" : "hour24";
@@ -289,16 +313,16 @@ function tokenForPart(part, formatOpts, resolvedOpts) {
   return undefined;
 }
 
-function buildRegex(units) {
+function buildRegex(units: Unit[]): [string, Unit[]] {
   const re = units.map((u) => u.regex).reduce((f, r) => `${f}(${r.source})`, "");
   return [`^${re}$`, units];
 }
 
-function match(input, regex, handlers) {
+function match(input: string, regex: RegExp, handlers: Unit[]): [RegExpMatchArray | null, Matches] {
   const matches = input.match(regex);
 
   if (matches) {
-    const all = {};
+    const all: Matches = {};
     let matchIndex = 1;
     for (const i in handlers) {
       if (hasOwnProperty(handlers, i)) {
@@ -316,8 +340,10 @@ function match(input, regex, handlers) {
   }
 }
 
-function dateTimeFromMatches(matches) {
-  const toField = (token) => {
+function dateTimeFromMatches(
+  matches: Matches
+): [DateObjectUnits, Zone | null, number | undefined, string | undefined] {
+  const toField = (token: string): keyof DateObjectUnits | "quarter" | null => {
     switch (token) {
       case "S":
         return "millisecond";
@@ -351,47 +377,47 @@ function dateTimeFromMatches(matches) {
     }
   };
 
-  let zone = null;
-  let specificOffset;
+  let zone: Zone | null = null;
+  let specificOffset: number | undefined;
   if (!isUndefined(matches.z)) {
-    zone = IANAZone.create(matches.z);
+    zone = IANAZone.create(matches.z as string);
   }
 
   if (!isUndefined(matches.Z)) {
     if (!zone) {
-      zone = new FixedOffsetZone(matches.Z);
+      zone = new FixedOffsetZone(matches.Z as number);
     }
-    specificOffset = matches.Z;
+    specificOffset = matches.Z as number;
   }
 
   if (!isUndefined(matches.q)) {
-    matches.M = (matches.q - 1) * 3 + 1;
+    matches.M = ((matches.q as number) - 1) * 3 + 1;
   }
 
-  let hourInvalidReason;
+  let hourInvalidReason: string | undefined;
 
   if (!isUndefined(matches.h)) {
-    if (!isUndefined(matches.a) && (matches.h < 1 || matches.h > 12)) {
+    if (!isUndefined(matches.a) && ((matches.h as number) < 1 || (matches.h as number) > 12)) {
       // "h" is the 12-hour token, so when a meridiem ("a") is also present the
       // hour must be within [1, 12]. Anything else (e.g. "18:30 AM") is not a
       // valid 12-hour time, so the result is invalid.
       hourInvalidReason = `the 12-hour value "${matches.h}" is not in the [1, 12] range`;
-    } else if (matches.h < 12 && matches.a === 1) {
-      matches.h += 12;
+    } else if ((matches.h as number) < 12 && matches.a === 1) {
+      (matches.h as number) += 12;
     } else if (matches.h === 12 && matches.a === 0) {
       matches.h = 0;
     }
   }
 
   if (matches.G === 0 && matches.y) {
-    matches.y = -matches.y;
+    matches.y = -(matches.y as number);
   }
 
   if (!isUndefined(matches.u)) {
-    matches.S = parseMillis(matches.u);
+    matches.S = parseMillis(matches.u as string) as number;
   }
 
-  const vals = Object.keys(matches).reduce((r, k) => {
+  const vals = Object.keys(matches).reduce<Record<string, number | string>>((r, k) => {
     const f = toField(k);
     if (f) {
       r[f] = matches[k];
@@ -400,12 +426,12 @@ function dateTimeFromMatches(matches) {
     return r;
   }, {});
 
-  return [vals, zone, specificOffset, hourInvalidReason];
+  return [vals as DateObjectUnits, zone, specificOffset, hourInvalidReason];
 }
 
-let dummyDateTimeCache = null;
+let dummyDateTimeCache: DateTime | null = null;
 
-function getDummyDateTime() {
+function getDummyDateTime(): DateTime {
   if (!dummyDateTimeCache) {
     dummyDateTimeCache = DateTime.fromMillis(1555555555555);
   }
@@ -413,7 +439,7 @@ function getDummyDateTime() {
   return dummyDateTimeCache;
 }
 
-function maybeExpandMacroToken(token, locale) {
+function maybeExpandMacroToken(token: FormatToken, locale: Locale): FormatToken | FormatToken[] {
   if (token.literal) {
     return token;
   }
@@ -425,10 +451,10 @@ function maybeExpandMacroToken(token, locale) {
     return token;
   }
 
-  return tokens;
+  return tokens as FormatToken[];
 }
 
-export function expandMacroTokens(tokens, locale) {
+export function expandMacroTokens(tokens: FormatToken[], locale: Locale): FormatToken[] {
   return Array.prototype.concat(...tokens.map((t) => maybeExpandMacroToken(t, locale)));
 }
 
@@ -437,7 +463,15 @@ export function expandMacroTokens(tokens, locale) {
  */
 
 export class TokenParser {
-  constructor(locale, format) {
+  readonly locale: Locale;
+  readonly format: string;
+  readonly tokens: FormatToken[];
+  private readonly units: Unit[];
+  private readonly disqualifyingUnit: Unit | undefined;
+  private readonly regex?: RegExp;
+  private readonly handlers?: Unit[];
+
+  constructor(locale: Locale, format: string) {
     this.locale = locale;
     this.format = format;
     this.tokens = expandMacroTokens(Formatter.parseFormat(format), locale);
@@ -451,11 +485,11 @@ export class TokenParser {
     }
   }
 
-  explainFromTokens(input) {
+  explainFromTokens(input: string): ExplainedFormat {
     if (!this.isValid) {
       return { input, tokens: this.tokens, invalidReason: this.invalidReason };
     } else {
-      const [rawMatches, matches] = match(input, this.regex, this.handlers),
+      const [rawMatches, matches] = match(input, this.regex as RegExp, this.handlers as Unit[]),
         [result, zone, specificOffset, parseInvalidReason] = matches
           ? dateTimeFromMatches(matches)
           : [null, null, undefined, undefined];
@@ -478,26 +512,33 @@ export class TokenParser {
     }
   }
 
-  get isValid() {
+  get isValid(): boolean {
     return !this.disqualifyingUnit;
   }
 
-  get invalidReason() {
-    return this.disqualifyingUnit ? this.disqualifyingUnit.invalidReason : null;
+  get invalidReason(): string | null {
+    return this.disqualifyingUnit ? (this.disqualifyingUnit.invalidReason as string) : null;
   }
 }
 
-export function explainFromTokens(locale, input, format) {
+export function explainFromTokens(locale: Locale, input: string, format: string): ExplainedFormat {
   const parser = new TokenParser(locale, format);
   return parser.explainFromTokens(input);
 }
 
-export function parseFromTokens(locale, input, format) {
+export function parseFromTokens(
+  locale: Locale,
+  input: string,
+  format: string
+): [DateObjectUnits | null | undefined, Zone | null | undefined, number | undefined, string | null | undefined] {
   const { result, zone, specificOffset, invalidReason } = explainFromTokens(locale, input, format);
   return [result, zone, specificOffset, invalidReason];
 }
 
-export function formatOptsToTokens(formatOpts, locale) {
+export function formatOptsToTokens(
+  formatOpts: Intl.DateTimeFormatOptions | undefined,
+  locale: Locale
+): (FormatToken | undefined)[] | null {
   if (!formatOpts) {
     return null;
   }

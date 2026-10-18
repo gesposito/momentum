@@ -10,7 +10,7 @@ import SystemZone from "./zones/systemZone.js";
 import Settings from "./settings.js";
 import { TemporalUnavailableError } from "./errors.js";
 
-const VERSION = "3.7.2";
+const VERSION = "0.1.0";
 
 export {
   VERSION,
@@ -26,3 +26,5 @@ export {
   Settings,
   TemporalUnavailableError,
 };
+
+export type * from "./types.js";

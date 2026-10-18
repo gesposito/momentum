@@ -4,8 +4,11 @@
   Converting between epoch milliseconds and year/month/day/hour/minute/second/millisecond is pure
   arithmetic with no time zone or locale input, so it is done with the classic closed-form
   algorithms (Howard Hinnant's days_from_civil / civil_from_days) rather than by materializing
-  Date or Temporal objects. Everything time-zone dependent lives in ./temporal.js.
+  Temporal objects, whose field accessors cost hundreds of nanoseconds in current engines.
+  Everything time-zone dependent lives in ./temporal.ts.
 */
+
+import type { GregorianDateTime } from "../types.js";
 
 const MS_PER_DAY = 86400000;
 
@@ -13,7 +16,7 @@ const MS_PER_DAY = 86400000;
  * Days since 1970-01-01 of a proleptic Gregorian date. The month may lie outside 1..12 and the
  * day outside the month's length; both roll over, the way `Date.UTC()` behaves.
  */
-export function daysFromCivil(year, month, day) {
+export function daysFromCivil(year: number, month: number, day: number): number {
   const monthIndex = month - 1,
     yearShift = Math.floor(monthIndex / 12),
     m = monthIndex - yearShift * 12 + 1,
@@ -30,7 +33,7 @@ export function daysFromCivil(year, month, day) {
 /**
  * Proleptic Gregorian date of a day count since 1970-01-01.
  */
-export function civilFromDays(days) {
+export function civilFromDays(days: number): { year: number; month: number; day: number } {
   const z = days + 719468,
     era = Math.floor(z / 146097),
     doe = z - era * 146097,
@@ -48,7 +51,7 @@ export function civilFromDays(days) {
 /**
  * ISO weekday (1 = Monday ... 7 = Sunday) of a proleptic Gregorian date.
  */
-export function dayOfWeek(year, month, day) {
+export function dayOfWeek(year: number, month: number, day: number): number {
   // 1970-01-01 was a Thursday
   const days = daysFromCivil(year, month, day);
   return ((((days + 3) % 7) + 7) % 7) + 1;
@@ -59,9 +62,13 @@ export function dayOfWeek(year, month, day) {
  * roll over into the next unit (hour 24 is the next day's midnight, day 32 of January is
  * February 1, ...) and fractions are truncated, matching `Date.UTC()`. NaN when not finite.
  */
-export function msFromCivil(fields) {
+export function msFromCivil(fields: GregorianDateTime): number {
   const ms =
-    daysFromCivil(Math.trunc(fields.year), Math.trunc(fields.month), Math.trunc(fields.day)) *
+    daysFromCivil(
+      Math.trunc(fields.year),
+      Math.trunc(fields.month),
+      Math.trunc(fields.day)
+    ) *
       MS_PER_DAY +
     Math.trunc(fields.hour) * 3600000 +
     Math.trunc(fields.minute) * 60000 +
@@ -73,7 +80,7 @@ export function msFromCivil(fields) {
 /**
  * Wall-clock fields of epoch milliseconds read as UTC. Fractional milliseconds are truncated.
  */
-export function civilFromMs(ms) {
+export function civilFromMs(ms: number): GregorianDateTime {
   const t = Math.trunc(ms),
     days = Math.floor(t / MS_PER_DAY),
     msInDay = t - days * MS_PER_DAY,

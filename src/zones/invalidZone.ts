@@ -5,49 +5,42 @@ import Zone from "../zone.js";
  * @implements {Zone}
  */
 export default class InvalidZone extends Zone {
-  constructor(zoneName) {
+  private readonly zoneName: string;
+
+  constructor(zoneName: string) {
     super();
-    /**  @private */
     this.zoneName = zoneName;
   }
 
-  /** @override **/
-  get type() {
+  override get type(): string {
     return "invalid";
   }
 
-  /** @override **/
-  get name() {
+  override get name(): string {
     return this.zoneName;
   }
 
-  /** @override **/
-  get isUniversal() {
+  override get isUniversal(): boolean {
     return false;
   }
 
-  /** @override **/
-  offsetName() {
+  override offsetName(): null {
     return null;
   }
 
-  /** @override **/
-  formatOffset() {
+  override formatOffset(): string {
     return "";
   }
 
-  /** @override **/
-  offset() {
+  override offset(): number {
     return NaN;
   }
 
-  /** @override **/
-  equals() {
+  override equals(): boolean {
     return false;
   }
 
-  /** @override **/
-  get isValid() {
+  override get isValid(): boolean {
     return false;
   }
 }

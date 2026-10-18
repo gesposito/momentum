@@ -1,7 +1,8 @@
 import * as Formats from "./formats.js";
 import { pick } from "./util.js";
+import type { StringUnitLength, UnitLength } from "../types.js";
 
-function stringify(obj) {
+function stringify(obj: object): string {
   return JSON.stringify(obj, Object.keys(obj).sort());
 }
 
@@ -41,7 +42,7 @@ export const monthsShort = [
 
 export const monthsNarrow = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
-export function months(length) {
+export function months(length: UnitLength | undefined): string[] | null {
   switch (length) {
     case "narrow":
       return [...monthsNarrow];
@@ -72,7 +73,7 @@ export const weekdaysShort = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export const weekdaysNarrow = ["M", "T", "W", "T", "F", "S", "S"];
 
-export function weekdays(length) {
+export function weekdays(length: UnitLength | undefined): string[] | null {
   switch (length) {
     case "narrow":
       return [...weekdaysNarrow];
@@ -95,7 +96,7 @@ export const erasShort = ["BC", "AD"];
 
 export const erasNarrow = ["B", "A"];
 
-export function eras(length) {
+export function eras(length: StringUnitLength | undefined): string[] | null {
   switch (length) {
     case "narrow":
       return [...erasNarrow];
@@ -108,24 +109,36 @@ export function eras(length) {
   }
 }
 
-export function meridiemForDateTime(dt) {
+interface DateTimeFields {
+  hour: number;
+  weekday: number;
+  month: number;
+  year: number;
+}
+
+export function meridiemForDateTime(dt: Pick<DateTimeFields, "hour">): string {
   return meridiems[dt.hour < 12 ? 0 : 1];
 }
 
-export function weekdayForDateTime(dt, length) {
-  return weekdays(length)[dt.weekday - 1];
+export function weekdayForDateTime(dt: Pick<DateTimeFields, "weekday">, length: UnitLength): string {
+  return (weekdays(length) as string[])[dt.weekday - 1];
 }
 
-export function monthForDateTime(dt, length) {
-  return months(length)[dt.month - 1];
+export function monthForDateTime(dt: Pick<DateTimeFields, "month">, length: UnitLength): string {
+  return (months(length) as string[])[dt.month - 1];
 }
 
-export function eraForDateTime(dt, length) {
-  return eras(length)[dt.year < 0 ? 0 : 1];
+export function eraForDateTime(dt: Pick<DateTimeFields, "year">, length: StringUnitLength): string {
+  return (eras(length) as string[])[dt.year < 0 ? 0 : 1];
 }
 
-export function formatRelativeTime(unit, count, numeric = "always", narrow = false) {
-  const units = {
+export function formatRelativeTime(
+  unit: string,
+  count: number,
+  numeric: "always" | "auto" = "always",
+  narrow = false
+): string {
+  const units: Record<string, string[]> = {
     years: ["year", "yr."],
     quarters: ["quarter", "qtr."],
     months: ["month", "mo."],
@@ -160,12 +173,12 @@ export function formatRelativeTime(unit, count, numeric = "always", narrow = fal
         ? lilUnits[1]
         : lilUnits[2] || lilUnits[1]
       : singular
-      ? units[unit][0]
-      : unit;
+        ? units[unit][0]
+        : unit;
   return isInPast ? `${fmtValue} ${fmtUnit} ago` : `in ${fmtValue} ${fmtUnit}`;
 }
 
-export function formatString(knownFormat) {
+export function formatString(knownFormat: Intl.DateTimeFormatOptions): string {
   // these all have the offsets removed because we don't have access to them
   // without all the intl stuff this is backfilling
   const filtered = pick(knownFormat, [
