@@ -20,8 +20,16 @@ import {
   padStart,
 } from "./impl/util.js";
 import { civilFromMs, msFromCivil } from "./impl/calendar.js";
-import { isRepresentableTs } from "./impl/temporal.js";
-import { normalizeZone } from "./impl/zoneUtil.js";
+import {
+  gregorianFields,
+  isRepresentableTs,
+  offsetMinutes,
+  offsetTimeZoneId,
+  plainDate,
+  temporal,
+  zonedDateTime,
+} from "./impl/temporal.js";
+import { normalizeZone, temporalZoneId } from "./impl/zoneUtil.js";
 import diff from "./impl/diff.js";
 import { parseRFC2822Date, parseISODate, parseHTTPDate, parseSQL } from "./impl/regexParser.js";
 import {
@@ -1056,6 +1064,46 @@ export default class DateTime {
   static fromSQL(text, opts = {}) {
     const [vals, parsedZone] = parseSQL(text);
     return parseDataToDateTime(vals, parsedZone, opts, "SQL", text);
+  }
+
+  /**
+   * Create a DateTime from a `Temporal.ZonedDateTime`. The DateTime keeps the instant and the
+   * time zone: "UTC" becomes {@link FixedOffsetZone.utcInstance}, IANA names and offsets such as
+   * "+05:30" become {@link IANAZone}s.
+   * Non-ISO calendars are converted to the Gregorian/ISO calendar.
+   * @param {Temporal.ZonedDateTime} zonedDateTime - the Temporal.ZonedDateTime to convert
+   * @param {Object} opts - configuration options for the DateTime
+   * @param {string} [opts.locale] - a locale to set on the resulting DateTime instance
+   * @param {string} opts.outputCalendar - the output calendar to set on the resulting DateTime instance
+   * @param {string} opts.numberingSystem - the numbering system to set on the resulting DateTime instance
+   * @param {string} opts.weekSettings - the week settings to set on the resulting DateTime instance
+   * @example DateTime.fromZonedDateTime(Temporal.Now.zonedDateTimeISO("America/New_York"))
+   * @return {DateTime}
+   */
+  static fromZonedDateTime(zonedDateTime, opts = {}) {
+    const iso = zonedDateTime.withCalendar("iso8601"),
+      zone = normalizeZone(iso.timeZoneId, Settings.defaultZone);
+    if (!zone.isValid) {
+      return DateTime.invalid(unsupportedZone(zone));
+    }
+    return new DateTime({
+      ts: iso.epochMilliseconds,
+      zone,
+      loc: Locale.fromObject(opts),
+      c: gregorianFields(iso),
+      o: offsetMinutes(iso),
+    });
+  }
+
+  /**
+   * Create a DateTime from a `Temporal.Instant`. Uses the default zone unless one is given.
+   * @param {Temporal.Instant} instant - the Temporal.Instant to convert
+   * @param {Object} opts - configuration options for the DateTime, see {@link DateTime.fromMillis}
+   * @example DateTime.fromInstant(Temporal.Now.instant(), { zone: "Europe/Paris" })
+   * @return {DateTime}
+   */
+  static fromInstant(instant, opts = {}) {
+    return DateTime.fromMillis(instant.epochMilliseconds, opts);
   }
 
   /**
@@ -2184,6 +2232,57 @@ export default class DateTime {
    */
   toJSDate() {
     return new Date(this.isValid ? this.ts : NaN);
+  }
+
+  /**
+   * Returns a `Temporal.ZonedDateTime` equivalent to this DateTime, or null if it is invalid or
+   * Temporal has no time zone for it. IANA and fixed-offset zones map directly onto Temporal time
+   * zones; custom {@link Zone} implementations are represented by their UTC offset at this
+   * instant. Temporal's offset time zones are whole minutes under a day, so a sub-minute offset
+   * (or a fixed offset of a day or more) has no counterpart.
+   * @example DateTime.now().toZonedDateTime().toString() //=> '2017-04-22T20:47:05.335-04:00[America/New_York]'
+   * @return {Temporal.ZonedDateTime|null}
+   */
+  toZonedDateTime() {
+    if (!this.isValid) return null;
+    const tzId = temporalZoneId(this.zone) ?? offsetTimeZoneId(this.o);
+    return tzId === null ? null : zonedDateTime(this.ts, tzId);
+  }
+
+  /**
+   * Returns a `Temporal.Instant` equivalent to this DateTime, or null if it is invalid.
+   * @return {Temporal.Instant|null}
+   */
+  toInstant() {
+    return this.isValid ? temporal().Instant.fromEpochMilliseconds(Math.trunc(this.ts)) : null;
+  }
+
+  /**
+   * Returns a `Temporal.PlainDateTime` with the wall-clock date and time of this DateTime, or null if it is invalid.
+   * @return {Temporal.PlainDateTime|null}
+   */
+  toPlainDateTime() {
+    return this.isValid ? temporal().PlainDateTime.from(this.c) : null;
+  }
+
+  /**
+   * Returns a `Temporal.PlainDate` with the calendar date of this DateTime, or null if it is invalid.
+   * @return {Temporal.PlainDate|null}
+   */
+  toPlainDate() {
+    if (!this.isValid) return null;
+    const c = this.c;
+    return plainDate(c.year, c.month, c.day);
+  }
+
+  /**
+   * Returns a `Temporal.PlainTime` with the wall-clock time of this DateTime, or null if it is invalid.
+   * @return {Temporal.PlainTime|null}
+   */
+  toPlainTime() {
+    if (!this.isValid) return null;
+    const { hour, minute, second, millisecond } = this.c;
+    return temporal().PlainTime.from({ hour, minute, second, millisecond });
   }
 
   // COMPARE

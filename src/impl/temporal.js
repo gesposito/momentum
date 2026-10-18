@@ -61,6 +61,36 @@ export function offsetMinutes(zdt) {
   return zdt.offsetNanoseconds / NANOS_PER_MINUTE;
 }
 
+function pad2(n) {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+
+/**
+ * Identifier of the Temporal time zone with a fixed UTC offset in minutes, e.g. `-240` ->
+ * `"-04:00"`, or null when Temporal has none: offset time zones are whole minutes under a day.
+ */
+export function offsetTimeZoneId(minutes) {
+  if (!Number.isInteger(minutes) || Math.abs(minutes) >= 1440) return null;
+  const abs = Math.abs(minutes);
+  return `${minutes < 0 ? "-" : "+"}${pad2(Math.floor(abs / 60))}:${pad2(abs % 60)}`;
+}
+
+export function gregorianFields(dt) {
+  return {
+    year: dt.year,
+    month: dt.month,
+    day: dt.day,
+    hour: dt.hour,
+    minute: dt.minute,
+    second: dt.second,
+    millisecond: dt.millisecond,
+  };
+}
+
+export function plainDate(year, month, day) {
+  return temporal().PlainDate.from({ year, month, day });
+}
+
 // OFFSETS
 
 // A zone's offset is constant between two transitions. Looking a transition window up once and

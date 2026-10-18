@@ -8,7 +8,8 @@ import FixedOffsetZone from "../zones/fixedOffsetZone.js";
 import InvalidZone from "../zones/invalidZone.js";
 
 import { isUndefined, isString, isNumber } from "./util.js";
-import SystemZone from "../zones/systemZone.js";
+import { offsetTimeZoneId } from "./temporal.js";
+import SystemZone, { systemZoneId } from "../zones/systemZone.js";
 
 export function normalizeZone(input, defaultZone) {
   let offset;
@@ -30,5 +31,23 @@ export function normalizeZone(input, defaultZone) {
     return input;
   } else {
     return new InvalidZone(input);
+  }
+}
+
+/**
+ * The Temporal time zone identifier that represents a built-in zone, or null when there is none:
+ * custom zones only expose offsets through `Zone#offset()`, and Temporal's offset time zones are
+ * whole minutes under a day.
+ */
+export function temporalZoneId(zone) {
+  switch (zone.type) {
+    case "iana":
+      return zone.name;
+    case "fixed":
+      return zone.fixed === 0 ? "UTC" : offsetTimeZoneId(zone.fixed);
+    case "system":
+      return systemZoneId();
+    default:
+      return null;
   }
 }
