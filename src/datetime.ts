@@ -56,6 +56,7 @@ import {
   offsetMinutes,
   offsetTimeZoneId,
   plainDate,
+  resolveWallClock,
   temporal,
   wallClock,
   wallClockAtOffset,
@@ -221,7 +222,8 @@ function clone(inst: DateTime, alts: CloneAlts): DateTime {
 
 // find the right offset a given local time. The o input is our guess, which determines which
 // offset we'll pick in ambiguous cases (e.g. there are two 3 AMs b/c Fallback DST).
-// The zone's offsets come from Temporal (see IANAZone and SystemZone).
+// Only used for custom zones, which Temporal cannot represent; built-in zones are resolved by
+// Temporal.ZonedDateTime.from (see resolveWallClock).
 function fixOffset(localTS: number, o: number, tz: Zone): [number, number, boolean] {
   // Our UTC time is just a guess because our offset is just a guess
   let utcGuess = localTS - o * 60 * 1000;
@@ -260,20 +262,34 @@ function fieldsAtOffset(ts: number, offset: number): GregorianDateTime | null {
   }
 }
 
-// convert wall-clock fields in a zone to an instant, resolving DST gaps and overlaps.
-// offsetGuess picks the candidate for ambiguous times (when it is one of them)
+// convert wall-clock fields in a zone to an instant, resolving DST gaps and overlaps (see
+// resolveWallClock). offsetGuess picks the candidate for ambiguous times (when it is one of them).
+// Null when the result is not representable.
 function resolveFields(
   fields: GregorianDateTime,
   offsetGuess: number,
   zone: Zone
 ): ResolvedLocal | null {
-  // like Luxon's Date.UTC, a wall clock outside Date's range is not representable
-  const localTS = msFromCivil(fields);
-  if (!isRepresentableTs(localTS)) return null;
-  const [ts, o, wasHole] = fixOffset(localTS, offsetGuess, zone);
-  if (!isRepresentableTs(ts) || !Number.isFinite(o)) return null;
-  const c = fieldsAtOffset(ts, o);
-  return c === null ? null : { ts, o, c, wasHole };
+  try {
+    const tz = temporalZoneId(zone);
+    let resolved: ResolvedLocal;
+    if (tz !== null) {
+      const { zdt, fields: c, wasHole } = resolveWallClock(fields, tz, offsetGuess);
+      resolved = { ts: zdt.epochMilliseconds, o: offsetMinutes(zdt), c, wasHole };
+    } else {
+      // custom zones only report the offset of an instant: Luxon's fixOffset, starting from the
+      // instant the wall clock would have in UTC
+      const localTS = resolveWallClock(fields, "UTC").zdt.epochMilliseconds,
+        [ts, o, wasHole] = fixOffset(localTS, offsetGuess, zone);
+      if (!isRepresentableTs(ts) || !Number.isFinite(o)) return null;
+      resolved = { ts, o, c: wallClockAtOffset(ts, o), wasHole };
+    }
+    // Luxon computes local times with Date, so the local time must be within Date's range too
+    return isRepresentableTs(resolved.ts + resolved.o * 60 * 1000) ? resolved : null;
+  } catch (e) {
+    if (!isRangeError(e)) throw e;
+    return null;
+  }
 }
 
 const notRepresentable: CloneAlts = { ts: NaN, c: null, o: null, wasHole: false };

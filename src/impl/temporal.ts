@@ -74,6 +74,20 @@ export function offsetTimeZoneId(minutes: number): string | null {
 }
 
 /**
+ * Formats an offset in (possibly fractional) minutes as a UTC offset string with up to second
+ * precision, as ZonedDateTime.from accepts it: `-240` -> `"-04:00"`, `49.9333` -> `"+00:49:56"`.
+ */
+function offsetString(minutes: number): string {
+  const sign = minutes < 0 ? "-" : "+",
+    totalSeconds = Math.round(Math.abs(minutes) * 60),
+    hours = Math.floor(totalSeconds / 3600),
+    mins = Math.floor((totalSeconds % 3600) / 60),
+    secs = totalSeconds % 60,
+    base = `${sign}${pad2(hours)}:${pad2(mins)}`;
+  return secs === 0 ? base : `${base}:${pad2(secs)}`;
+}
+
+/**
  * Zoned view of an epoch millisecond timestamp. Throws a RangeError for timestamps outside the
  * representable range or for unknown time zone identifiers.
  */
@@ -124,6 +138,125 @@ export function wallClockAtOffset(ts: number, minutes: number): GregorianDateTim
  */
 export function plainDate(year: number, month: number, day: number): PlainDate {
   return new (temporal().PlainDate)(year, month, day);
+}
+
+// WALL-CLOCK RESOLUTION
+
+export interface ResolvedWallClock {
+  zdt: ZonedDateTime;
+  /** the wall clock of `zdt`, which differs from the requested one when that one was skipped */
+  fields: GregorianDateTime;
+  /** whether the requested wall clock fell into a gap and was moved forward */
+  wasHole: boolean;
+}
+
+const resolveOptions = {
+  offset: "prefer",
+  disambiguation: "compatible",
+  overflow: "reject",
+} as const;
+
+/**
+ * The instant of a wall-clock time in a Temporal time zone, resolved the way Luxon does it:
+ *
+ * - an ambiguous time (the clocks went back) takes `offsetGuess`, in minutes, when that is one of
+ *   its two offsets, and the earlier instant otherwise;
+ * - a skipped time (the clocks went forward) moves forward by the length of the gap and is
+ *   reported as a hole;
+ * - fields out of range roll over into the next unit the way `Date.UTC()` does (day 31 of
+ *   February is early March, hour 24 the next midnight, month 13 the next January, a negative
+ *   minute the previous hour) and fractions are truncated.
+ *
+ * Throws a RangeError when the result is not representable.
+ */
+export function resolveWallClock(
+  fields: GregorianDateTime,
+  timeZone: string,
+  offsetGuess?: number
+): ResolvedWallClock {
+  const T = temporal(),
+    offset =
+      offsetGuess !== undefined && Number.isFinite(offsetGuess) && Math.abs(offsetGuess) < 1440
+        ? offsetString(offsetGuess)
+        : undefined;
+  // the property bag doubles as the requested wall clock
+  let requested: GregorianDateTime & { timeZone: string; offset: string | undefined } = {
+      year: Math.trunc(fields.year),
+      month: Math.trunc(fields.month),
+      day: Math.trunc(fields.day),
+      hour: Math.trunc(fields.hour),
+      minute: Math.trunc(fields.minute),
+      second: Math.trunc(fields.second),
+      millisecond: Math.trunc(fields.millisecond),
+      timeZone,
+      offset,
+    },
+    zdt: ZonedDateTime;
+  try {
+    zdt = T.ZonedDateTime.from(requested, resolveOptions);
+  } catch (e) {
+    if (!isRangeError(e)) throw e;
+    requested = { ...rollOver(requested), timeZone, offset };
+    try {
+      zdt = T.ZonedDateTime.from(requested, resolveOptions);
+    } catch (e) {
+      if (!isRangeError(e)) throw e;
+      // ZonedDateTime.from rejects wall clocks on the first day of Temporal's range, which zones
+      // west of UTC reach, when an offset is given (temporal-polyfill always does), while
+      // PlainDateTime#toZonedDateTime accepts them; no time is ambiguous that far back
+      const { year, month, day, hour, minute, second, millisecond } = requested;
+      zdt = new T.PlainDateTime(year, month, day, hour, minute, second, millisecond).toZonedDateTime(
+        timeZone
+      );
+    }
+  }
+  const resolved = wallClock(zdt);
+  return { zdt, fields: resolved, wasHole: !sameWallClock(resolved, requested) };
+}
+
+// The Gregorian calendar repeats every 400 years: 4800 months, 146097 days
+const CYCLE_MONTHS = 4800,
+  CYCLE_DAYS = 146097,
+  CYCLE_MS = CYCLE_DAYS * 86400000;
+
+// integer fields with out-of-range values carried into the larger units (see resolveWallClock)
+function rollOver(f: GregorianDateTime): GregorianDateTime {
+  // Whole 400-year cycles are taken out of the months, the days and the time of day and added to
+  // the year, and the rest is carried near the year 2000, so that every intermediate date is
+  // representable wherever the year and the result lie in Temporal's range. Temporal.Duration
+  // rejects mixed signs, so the months, the days and the time of day are added one at a time.
+  const ms = f.hour * 3600000 + f.minute * 60000 + f.second * 1000 + f.millisecond,
+    monthCycles = Math.floor((f.month - 1) / CYCLE_MONTHS),
+    dayCycles = Math.floor((f.day - 1) / CYCLE_DAYS),
+    msCycles = Math.floor(ms / CYCLE_MS),
+    year = f.year + (monthCycles + dayCycles + msCycles) * 400,
+    shift = Math.round((year - 2000) / 400) * 400,
+    p = plainDate(year - shift, 1, 1)
+      .add({ months: f.month - 1 - monthCycles * CYCLE_MONTHS })
+      .add({ days: f.day - 1 - dayCycles * CYCLE_DAYS })
+      .toPlainDateTime()
+      .add({ milliseconds: ms - msCycles * CYCLE_MS });
+  return {
+    year: p.year + shift,
+    month: p.month,
+    day: p.day,
+    hour: p.hour,
+    minute: p.minute,
+    second: p.second,
+    millisecond: p.millisecond,
+  };
+}
+
+function sameWallClock(a: GregorianDateTime, b: GregorianDateTime): boolean {
+  return (
+    a.year === b.year &&
+    a.month === b.month &&
+    a.day === b.day &&
+    a.hour === b.hour &&
+    a.minute === b.minute &&
+    a.second === b.second &&
+    a.millisecond === b.millisecond
+  );
 }
 
 // OFFSETS
