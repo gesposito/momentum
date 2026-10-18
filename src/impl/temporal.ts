@@ -3,9 +3,9 @@
   lazily, so importing momentum never touches globals and a polyfill may be installed before the
   first call (see `momentum/polyfill`).
 
-  Temporal is the authority for everything that depends on the time zone database: UTC offsets,
-  the transitions between them and the set of valid zone identifiers. Pure calendar arithmetic
-  lives in ./calendar.ts.
+  Temporal is the authority for the calendar and for everything that depends on the time zone
+  database: a DateTime reads its calendar fields and UTC offset from the Temporal.ZonedDateTime
+  of its instant in its zone, and Zone#offset() is answered from transition windows cached here.
 */
 
 import type { Temporal as TemporalNamespace } from "temporal-spec";
@@ -85,20 +85,45 @@ export function offsetMinutes(zdt: ZonedDateTime): number {
   return zdt.offsetNanoseconds / NANOS_PER_MINUTE;
 }
 
-export function gregorianFields(dt: ZonedDateTime | PlainDateTime): GregorianDateTime {
+/**
+ * Calendar fields of the wall clock of a ZonedDateTime. They are read through a PlainDateTime,
+ * whose getters are plain field reads, while every ZonedDateTime getter of the native engines
+ * recomputes the wall clock (about 200 ns each on JavaScriptCore).
+ */
+export function wallClock(zdt: ZonedDateTime): GregorianDateTime {
+  const p = zdt.toPlainDateTime();
   return {
-    year: dt.year,
-    month: dt.month,
-    day: dt.day,
-    hour: dt.hour,
-    minute: dt.minute,
-    second: dt.second,
-    millisecond: dt.millisecond,
+    year: p.year,
+    month: p.month,
+    day: p.day,
+    hour: p.hour,
+    minute: p.minute,
+    second: p.second,
+    millisecond: p.millisecond,
   };
 }
 
+/**
+ * Calendar fields of an epoch millisecond timestamp seen at a fixed UTC offset in minutes. Offsets
+ * that have no Temporal offset time zone (seconds, or a day and more, which custom zones may
+ * report) shift the instant and read it in UTC instead. Throws a RangeError when the result is not
+ * representable.
+ */
+export function wallClockAtOffset(ts: number, minutes: number): GregorianDateTime {
+  const id = offsetTimeZoneId(minutes);
+  return wallClock(
+    id === null
+      ? zonedDateTime(Math.trunc(ts) + Math.round(minutes * 60000), "UTC")
+      : zonedDateTime(ts, id)
+  );
+}
+
+/**
+ * ISO calendar date. Throws a RangeError for dates that do not exist or lie outside Temporal's
+ * range.
+ */
 export function plainDate(year: number, month: number, day: number): PlainDate {
-  return temporal().PlainDate.from({ year, month, day });
+  return new (temporal().PlainDate)(year, month, day);
 }
 
 // OFFSETS

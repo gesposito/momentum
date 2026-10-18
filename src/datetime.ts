@@ -50,16 +50,19 @@ import {
 } from "./errors.js";
 import Invalid from "./impl/invalid.js";
 import {
-  gregorianFields,
+  isRangeError,
   isRepresentableTs,
+  MAX_EPOCH_MS,
   offsetMinutes,
   offsetTimeZoneId,
   plainDate,
   temporal,
+  wallClock,
+  wallClockAtOffset,
   zonedDateTime,
 } from "./impl/temporal.js";
 import type { Instant, PlainDate, PlainDateTime, PlainTime, ZonedDateTime } from "./impl/temporal.js";
-import { civilFromMs, msFromCivil } from "./impl/calendar.js";
+import { msFromCivil } from "./impl/calendar.js";
 import type Zone from "./zone.js";
 import type {
   DateObjectUnits,
@@ -151,13 +154,36 @@ function unsupportedZone(zone: Zone): Invalid {
   return new Invalid("unsupported zone", `the zone "${zone.name}" is not supported`);
 }
 
+// A valid DateTime in a built-in zone is an instant (`ts`) in a Temporal time zone (`tz`), that
+// is, a Temporal.ZonedDateTime. Its calendar fields and offset are read from that ZonedDateTime
+// the first time they are needed and cached on the instance; DateTimes that only take part in
+// instant arithmetic and comparisons never pay for it. Custom zones have no Temporal time zone,
+// so their fields are computed up front from the zone's offset (see the constructor).
+function deriveFields(dt: DateTime): void {
+  const zdt = zonedDateTime(dt.ts, dt.tz as string);
+  dt.c = wallClock(zdt);
+  dt.o = offsetMinutes(zdt);
+}
+
+// calendar fields of a valid DateTime in its zone
+function fieldsOf(dt: DateTime): GregorianDateTime {
+  if (dt.c === null) deriveFields(dt);
+  return dt.c as GregorianDateTime;
+}
+
+// offset of a valid DateTime in minutes
+function offsetOf(dt: DateTime): number {
+  if (dt.o === null) deriveFields(dt);
+  return dt.o as number;
+}
+
 // we cache week data on the DT object and this intermediates the cache
 /**
  * @ignore
  */
 function possiblyCachedWeekData(dt: DateTime): WeekDateTime {
   if (dt.weekData === null) {
-    dt.weekData = gregorianToWeek(dt.c as GregorianDateTime);
+    dt.weekData = gregorianToWeek(fieldsOf(dt));
   }
   return dt.weekData;
 }
@@ -168,7 +194,7 @@ function possiblyCachedWeekData(dt: DateTime): WeekDateTime {
 function possiblyCachedLocalWeekData(dt: DateTime): WeekDateTime {
   if (dt.localWeekData === null) {
     dt.localWeekData = gregorianToWeek(
-      dt.c as GregorianDateTime,
+      fieldsOf(dt),
       dt.loc.getMinDaysInFirstWeek(),
       dt.loc.getStartOfWeek()
     );
@@ -221,18 +247,17 @@ function fixOffset(localTS: number, o: number, tz: Zone): [number, number, boole
   return [localTS - Math.min(o2, o3) * 60 * 1000, Math.max(o2, o3), true];
 }
 
-// calendar fields of an epoch timestamp shifted by an offset (in minutes)
-function fieldsAtOffset(ts: number, offset: number): GregorianDateTime {
-  return civilFromMs(ts + offset * 60 * 1000);
-}
-
-// calendar fields and offset of an epoch timestamp in a zone, or null when not representable.
-// Luxon computes local times with Date, so the local time must be within Date's range too
-function resolveTs(ts: number, zone: Zone): { c: GregorianDateTime; o: number } | null {
-  if (!isRepresentableTs(ts)) return null;
-  const o = zone.offset(ts);
-  if (!Number.isFinite(o) || !isRepresentableTs(ts + o * 60 * 1000)) return null;
-  return { c: fieldsAtOffset(ts, o), o };
+// calendar fields of an epoch timestamp at a UTC offset (in minutes), or null when not
+// representable. Luxon computes local times with Date, so the local time must be within Date's
+// range as well as the instant
+function fieldsAtOffset(ts: number, offset: number): GregorianDateTime | null {
+  if (!isRepresentableTs(ts + offset * 60 * 1000)) return null;
+  try {
+    return wallClockAtOffset(ts, offset);
+  } catch (e) {
+    if (!isRangeError(e)) throw e;
+    return null;
+  }
 }
 
 // convert wall-clock fields in a zone to an instant, resolving DST gaps and overlaps.
@@ -246,26 +271,36 @@ function resolveFields(
   const localTS = msFromCivil(fields);
   if (!isRepresentableTs(localTS)) return null;
   const [ts, o, wasHole] = fixOffset(localTS, offsetGuess, zone);
-  if (!isRepresentableTs(ts) || !Number.isFinite(o) || !isRepresentableTs(ts + o * 60 * 1000)) {
-    return null;
-  }
-  return { ts, o, c: fieldsAtOffset(ts, o), wasHole };
+  if (!isRepresentableTs(ts) || !Number.isFinite(o)) return null;
+  const c = fieldsAtOffset(ts, o);
+  return c === null ? null : { ts, o, c, wasHole };
 }
 
 const notRepresentable: CloneAlts = { ts: NaN, c: null, o: null, wasHole: false };
 
+// the calendar fields of an instant that cannot be represented (never mutated)
+const unknownFields: GregorianDateTime = {
+  year: NaN,
+  month: NaN,
+  day: NaN,
+  hour: NaN,
+  minute: NaN,
+  second: NaN,
+  millisecond: NaN,
+};
+
 // create a new DT instance by adding a duration, adjusting for DSTs
 function adjustTime(inst: DateTime, dur: Duration): CloneAlts {
-  const oPre = inst.o as number,
-    year = (inst.c as GregorianDateTime).year + Math.trunc(dur.years),
-    month =
-      (inst.c as GregorianDateTime).month + Math.trunc(dur.months) + Math.trunc(dur.quarters) * 3,
+  const instC = fieldsOf(inst),
+    oPre = offsetOf(inst),
+    year = instC.year + Math.trunc(dur.years),
+    month = instC.month + Math.trunc(dur.months) + Math.trunc(dur.quarters) * 3,
     c: GregorianDateTime = {
-      ...(inst.c as GregorianDateTime),
+      ...instC,
       year,
       month,
       day:
-        Math.min((inst.c as GregorianDateTime).day, daysInMonth(year, month)) +
+        Math.min(instC.day, daysInMonth(year, month)) +
         Math.trunc(dur.days) +
         Math.trunc(dur.weeks) * 7,
     },
@@ -280,10 +315,7 @@ function adjustTime(inst: DateTime, dur: Duration): CloneAlts {
       seconds: dur.seconds,
       milliseconds: dur.milliseconds,
     }).as("milliseconds"),
-    hasCalendarUnits =
-      c.year !== (inst.c as GregorianDateTime).year ||
-      c.month !== (inst.c as GregorianDateTime).month ||
-      c.day !== (inst.c as GregorianDateTime).day;
+    hasCalendarUnits = c.year !== instC.year || c.month !== instC.month || c.day !== instC.day;
 
   let alts: CloneAlts;
   if (hasCalendarUnits) {
@@ -291,7 +323,7 @@ function adjustTime(inst: DateTime, dur: Duration): CloneAlts {
     if (resolved === null) return notRepresentable;
     alts = resolved;
   } else {
-    alts = { ts: inst.ts, o: oPre, c: inst.c, wasHole: false };
+    alts = { ts: inst.ts, o: oPre, c: instC, wasHole: false };
   }
 
   if (millisToAdd !== 0) {
@@ -341,7 +373,7 @@ function toTechFormat(dt: DateTime, format: string, allowZ = true): string | nul
 }
 
 function toISODate(o: DateTime, extended: boolean, precision?: string): string {
-  const c = o.c as GregorianDateTime;
+  const c = fieldsOf(o);
   const longFormat = c.year > 9999 || c.year < 0;
   let s = "";
   if (longFormat && c.year >= 0) s += "+";
@@ -369,8 +401,8 @@ function toISOTime(
   extendedZone: boolean,
   precision: string
 ): string {
-  const c = o.c as GregorianDateTime,
-    offset = o.o as number;
+  const c = fieldsOf(o),
+    offset = offsetOf(o);
   const showSeconds = !suppressSeconds || c.millisecond !== 0 || c.second !== 0;
   let s = "";
   switch (precision) {
@@ -688,14 +720,22 @@ const zoneOffsetGuessCache = /* @__PURE__ */ new Map<string, number>();
 export default class DateTime {
   /** @internal epoch milliseconds */
   readonly ts: number;
+  /**
+   * @internal Temporal time zone identifier of the zone; null for custom zones, which only
+   * report offsets, and for invalid DateTimes
+   */
+  readonly tz: string | null;
   /** @internal */
   readonly loc: Locale;
   /** @internal */
   readonly invalid: Invalid | null;
-  /** @internal calendar fields in the zone, null when invalid */
-  readonly c: GregorianDateTime | null;
-  /** @internal offset in minutes, null when invalid */
-  readonly o: number | null;
+  /**
+   * @internal calendar fields in the zone, read from the ZonedDateTime on first use
+   * (see deriveFields); null until then and when invalid
+   */
+  c: GregorianDateTime | null;
+  /** @internal offset in minutes, read together with `c` */
+  o: number | null;
   /** @internal */
   weekData: WeekDateTime | null;
   /** @internal */
@@ -718,30 +758,41 @@ export default class DateTime {
 
     this.ts = isUndefined(config.ts) ? Settings.now() : config.ts;
 
-    let c: GregorianDateTime | null = null;
-    let o: number | null = null;
+    let tz: string | null = null,
+      c: GregorianDateTime | null = null,
+      o: number | null = null;
     if (!invalid) {
-      if (config.c != null && config.o != null) {
-        // the caller already resolved the calendar fields and offset for this instant; as in
-        // resolveTs, the local time must be within Date's range
-        if (isRepresentableTs(this.ts + config.o * 60 * 1000)) {
+      if (!isRepresentableTs(this.ts)) {
+        invalid = new Invalid("invalid input");
+      } else {
+        tz = temporalZoneId(zone);
+        if (config.c != null && config.o != null) {
+          // the caller already resolved the calendar fields and offset for this instant
           c = config.c;
           o = config.o;
-        } else {
-          invalid = new Invalid("invalid input");
+        } else if (tz === null) {
+          // custom zones have no Temporal time zone: their offset at this instant places it
+          o = zone.offset(this.ts);
+          c = Number.isFinite(o) ? fieldsAtOffset(this.ts, o) : null;
+        } else if (Math.abs(this.ts) > MAX_EPOCH_MS - 86400000) {
+          // Luxon computes local times with Date, so a local time outside Date's range is
+          // invalid input. Built-in zones' offsets are under a day, so only instants within a
+          // day of the end of the range need their fields now to check it.
+          const zdt = zonedDateTime(this.ts, tz);
+          c = wallClock(zdt);
+          o = offsetMinutes(zdt);
         }
-      } else {
-        const resolved = resolveTs(this.ts, zone);
-        if (resolved === null) {
+        if (o !== null && (c === null || !isRepresentableTs(this.ts + o * 60 * 1000))) {
           invalid = new Invalid("invalid input");
-        } else {
-          c = resolved.c;
-          o = resolved.o;
+          tz = null;
+          c = null;
+          o = null;
         }
       }
     }
 
     this._zone = zone;
+    this.tz = tz;
     this.loc = config.loc || Locale.create();
     this.invalid = invalid;
     this.weekData = null;
@@ -970,31 +1021,33 @@ export default class DateTime {
     const useWeekData = definiteWeekDef || (normalized.weekday && !containsGregor);
 
     // configure ourselves to deal with gregorian dates or week stuff
-    let units: string[],
-      defaultValues: Record<string, number>,
-      objNow: Record<string, number> = fieldsAtOffset(tsNow, offsetProvis) as unknown as Record<
-        string,
-        number
-      >;
+    let units: string[], defaultValues: Record<string, number>;
     if (useWeekData) {
       units = orderedWeekUnits;
       defaultValues = defaultWeekUnitValues;
-      objNow = gregorianToWeek(
-        objNow as unknown as GregorianDateTime,
-        minDaysInFirstWeek,
-        startOfWeek
-      ) as unknown as Record<string, number>;
     } else if (containsOrdinal) {
       units = orderedOrdinalUnits;
       defaultValues = defaultOrdinalUnitValues;
-      objNow = gregorianToOrdinal(objNow as unknown as GregorianDateTime) as unknown as Record<
-        string,
-        number
-      >;
     } else {
       units = orderedUnits;
       defaultValues = defaultUnitValues;
     }
+
+    // the current wall clock, in the same terms as the units, read only when a unit defaults to it
+    let objNow: Record<string, number> | null = null;
+    const nowValues = (): Record<string, number> => {
+      if (objNow === null) {
+        const now = fieldsAtOffset(tsNow, offsetProvis) ?? unknownFields;
+        objNow = (
+          useWeekData
+            ? gregorianToWeek(now, minDaysInFirstWeek, startOfWeek)
+            : containsOrdinal
+              ? gregorianToOrdinal(now)
+              : now
+        ) as unknown as Record<string, number>;
+      }
+      return objNow;
+    };
 
     // set default values for missing stuff
     let foundFirst = false;
@@ -1005,7 +1058,7 @@ export default class DateTime {
       } else if (foundFirst) {
         normalized[u] = defaultValues[u];
       } else {
-        normalized[u] = objNow[u];
+        normalized[u] = nowValues()[u];
       }
     }
 
@@ -1197,7 +1250,7 @@ export default class DateTime {
       ts: iso.epochMilliseconds,
       zone,
       loc: Locale.fromObject(opts),
-      c: gregorianFields(iso),
+      c: wallClock(iso),
       o: offsetMinutes(iso),
     });
   }
@@ -1349,7 +1402,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25).year //=> 2017
    */
   get year(): number {
-    return this.isValid ? (this.c as GregorianDateTime).year : NaN;
+    return this.isValid ? fieldsOf(this).year : NaN;
   }
 
   /**
@@ -1357,7 +1410,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25).quarter //=> 2
    */
   get quarter(): number {
-    return this.isValid ? Math.ceil((this.c as GregorianDateTime).month / 3) : NaN;
+    return this.isValid ? Math.ceil(fieldsOf(this).month / 3) : NaN;
   }
 
   /**
@@ -1365,7 +1418,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25).month //=> 5
    */
   get month(): number {
-    return this.isValid ? (this.c as GregorianDateTime).month : NaN;
+    return this.isValid ? fieldsOf(this).month : NaN;
   }
 
   /**
@@ -1373,7 +1426,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25).day //=> 25
    */
   get day(): number {
-    return this.isValid ? (this.c as GregorianDateTime).day : NaN;
+    return this.isValid ? fieldsOf(this).day : NaN;
   }
 
   /**
@@ -1381,7 +1434,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25, 9).hour //=> 9
    */
   get hour(): number {
-    return this.isValid ? (this.c as GregorianDateTime).hour : NaN;
+    return this.isValid ? fieldsOf(this).hour : NaN;
   }
 
   /**
@@ -1389,7 +1442,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25, 9, 30).minute //=> 30
    */
   get minute(): number {
-    return this.isValid ? (this.c as GregorianDateTime).minute : NaN;
+    return this.isValid ? fieldsOf(this).minute : NaN;
   }
 
   /**
@@ -1397,7 +1450,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25, 9, 30, 52).second //=> 52
    */
   get second(): number {
-    return this.isValid ? (this.c as GregorianDateTime).second : NaN;
+    return this.isValid ? fieldsOf(this).second : NaN;
   }
 
   /**
@@ -1405,7 +1458,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25, 9, 30, 52, 654).millisecond //=> 654
    */
   get millisecond(): number {
-    return this.isValid ? (this.c as GregorianDateTime).millisecond : NaN;
+    return this.isValid ? fieldsOf(this).millisecond : NaN;
   }
 
   /**
@@ -1474,7 +1527,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25).ordinal //=> 145
    */
   get ordinal(): number {
-    return this.isValid ? gregorianToOrdinal(this.c as GregorianDateTime).ordinal : NaN;
+    return this.isValid ? gregorianToOrdinal(fieldsOf(this)).ordinal : NaN;
   }
 
   /**
@@ -1519,7 +1572,7 @@ export default class DateTime {
    * @example DateTime.utc().offset //=> 0
    */
   get offset(): number {
-    return this.isValid ? +(this.o as number) : NaN;
+    return this.isValid ? +offsetOf(this) : NaN;
   }
 
   /**
@@ -1585,7 +1638,7 @@ export default class DateTime {
     }
     const dayMs = 86400000;
     const minuteMs = 60000;
-    const localTS = msFromCivil(this.c as GregorianDateTime);
+    const localTS = msFromCivil(fieldsOf(this));
     const oEarlier = this.zone.offset(localTS - dayMs);
     const oLater = this.zone.offset(localTS + dayMs);
 
@@ -1599,6 +1652,8 @@ export default class DateTime {
     const c1 = fieldsAtOffset(ts1, o1);
     const c2 = fieldsAtOffset(ts2, o2);
     if (
+      c1 !== null &&
+      c2 !== null &&
       c1.hour === c2.hour &&
       c1.minute === c2.minute &&
       c1.second === c2.second &&
@@ -1719,7 +1774,7 @@ export default class DateTime {
       return DateTime.invalid(unsupportedZone(target));
     } else if ((keepLocalTime || keepCalendarTime) && this.isValid) {
       const resolved = resolveFields(
-        this.c as GregorianDateTime,
+        fieldsOf(this),
         target.offset(this.ts),
         target
       );
@@ -1768,7 +1823,7 @@ export default class DateTime {
   set(values: DateObjectUnits): DateTime {
     if (!this.isValid) return this;
 
-    const c = this.c as GregorianDateTime;
+    const c = fieldsOf(this);
     const normalized: Record<string, number | undefined> = normalizeObject(
       values,
       normalizeUnitWithLocalWeeks
@@ -1814,7 +1869,7 @@ export default class DateTime {
       }
     }
 
-    const resolved = resolveFields(mixed, this.o as number, this.zone);
+    const resolved = resolveFields(mixed, offsetOf(this), this.zone);
     return clone(this, resolved ?? notRepresentable);
   }
 
@@ -2259,7 +2314,7 @@ export default class DateTime {
   toObject(opts: ToObjectOptions = {}): Partial<GregorianDateTimeWithConfig> {
     if (!this.isValid) return {};
 
-    const base: GregorianDateTimeWithConfig = { ...(this.c as GregorianDateTime) };
+    const base: GregorianDateTimeWithConfig = { ...fieldsOf(this) };
 
     if (opts.includeConfig) {
       base.outputCalendar = this.outputCalendar;
@@ -2286,7 +2341,7 @@ export default class DateTime {
    */
   toZonedDateTime(): ZonedDateTime | null {
     if (!this.isValid) return null;
-    const tzId = temporalZoneId(this.zone) ?? offsetTimeZoneId(this.o as number);
+    const tzId = this.tz ?? offsetTimeZoneId(offsetOf(this));
     return tzId === null ? null : zonedDateTime(this.ts, tzId);
   }
 
@@ -2301,7 +2356,7 @@ export default class DateTime {
    * Returns a `Temporal.PlainDateTime` with the wall-clock date and time of this DateTime, or null if it is invalid.
    */
   toPlainDateTime(): PlainDateTime | null {
-    return this.isValid ? temporal().PlainDateTime.from(this.c as GregorianDateTime) : null;
+    return this.isValid ? temporal().PlainDateTime.from(fieldsOf(this)) : null;
   }
 
   /**
@@ -2309,7 +2364,7 @@ export default class DateTime {
    */
   toPlainDate(): PlainDate | null {
     if (!this.isValid) return null;
-    const c = this.c as GregorianDateTime;
+    const c = fieldsOf(this);
     return plainDate(c.year, c.month, c.day);
   }
 
@@ -2318,7 +2373,7 @@ export default class DateTime {
    */
   toPlainTime(): PlainTime | null {
     if (!this.isValid) return null;
-    const { hour, minute, second, millisecond } = this.c as GregorianDateTime;
+    const { hour, minute, second, millisecond } = fieldsOf(this);
     return temporal().PlainTime.from({ hour, minute, second, millisecond });
   }
 
