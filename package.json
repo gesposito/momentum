@@ -1,0 +1,11 @@
+{
+  "name": "momentum",
+  "version": "0.1.0",
+  "description": "Luxon-compatible immutable dates, durations and intervals, powered by Temporal",
+  "keywords": ["date", "time", "temporal", "luxon", "immutable", "timezone"],
+  "license": "MIT",
+  "scripts": {},
+  "engines": {
+    "node": ">=20"
+  }
+}

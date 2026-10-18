@@ -1,0 +1,20 @@
+# dependencies (bun install)
+node_modules
+
+# build output and reports
+build
+coverage
+
+# logs and caches
+*.log
+*.tsbuildinfo
+.eslintcache
+.cache
+
+# editors and OS
+.idea
+.vscode
+.DS_Store
+
+# agent worktrees
+.claude/worktrees
