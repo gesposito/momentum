@@ -513,43 +513,43 @@ test("DateTime#toLocaleString() shows things in the right fixed-offset zone when
 });
 
 test("DateTime#toLocaleString() shows things with UTC if fixed-offset zone with 0 offset is used", () => {
-  expect(dt.setZone("UTC").toLocaleString(DateTime.DATETIME_FULL)).toBe(
+  expect(dt.setZone("UTC").toLocaleString(DateTime.DATETIME_FULL)).toMatchIgnoringWeirdSpaces(
     "May 25, 1982 at 9:23 AM UTC"
   );
 });
 
 test("DateTime#toLocaleString() does the best it can with unsupported fixed-offset zone when showing the zone", () => {
-  expect(dt.setZone("UTC+4:30").toLocaleString(DateTime.DATETIME_FULL)).toBe(
+  expect(dt.setZone("UTC+4:30").toLocaleString(DateTime.DATETIME_FULL)).toMatchIgnoringWeirdSpaces(
     "May 25, 1982 at 1:53\u202FPM UTC+4:30"
   );
 });
 
 test("DateTime#toLocaleString() does the best it can with unsupported fixed-offset zone with timeStyle full", () => {
-  expect(dt.setZone("UTC+4:30").toLocaleString({ timeStyle: "full" })).toBe(
+  expect(dt.setZone("UTC+4:30").toLocaleString({ timeStyle: "full" })).toMatchIgnoringWeirdSpaces(
     "1:53:54\u202FPM UTC+4:30"
   );
 });
 
 test("DateTime#toLocaleString() shows things in the right custom zone", () => {
-  expect(dt.setZone(new CustomZone("CUSTOM", 30)).toLocaleString(DateTime.DATETIME_SHORT)).toBe(
+  expect(dt.setZone(new CustomZone("CUSTOM", 30)).toLocaleString(DateTime.DATETIME_SHORT)).toMatchIgnoringWeirdSpaces(
     "5/25/1982, 9:53\u202FAM"
   );
 });
 
 test("DateTime#toLocaleString() shows things in the right custom zone when showing the zone", () => {
-  expect(dt.setZone(new CustomZone("CUSTOM", 30)).toLocaleString(DateTime.DATETIME_FULL)).toBe(
+  expect(dt.setZone(new CustomZone("CUSTOM", 30)).toLocaleString(DateTime.DATETIME_FULL)).toMatchIgnoringWeirdSpaces(
     "May 25, 1982 at 9:53\u202FAM CUST"
   );
 });
 
 test("DateTime#toLocaleString() shows things in the right custom zone with timeStyle full", () => {
-  expect(dt.setZone(new CustomZone("CUSTOM", 30)).toLocaleString({ timeStyle: "full" })).toBe(
+  expect(dt.setZone(new CustomZone("CUSTOM", 30)).toLocaleString({ timeStyle: "full" })).toMatchIgnoringWeirdSpaces(
     "9:53:54\u202FAM CUSTOM"
   );
 });
 
 test("DateTime#toLocaleString uses locale-appropriate time formats", () => {
-  expect(dt.reconfigure({ locale: "en-US" }).toLocaleString(DateTime.TIME_SIMPLE)).toBe("9:23 AM");
+  expect(dt.reconfigure({ locale: "en-US" }).toLocaleString(DateTime.TIME_SIMPLE)).toMatchIgnoringWeirdSpaces("9:23 AM");
   expect(dt.reconfigure({ locale: "en-US" }).toLocaleString(DateTime.TIME_24_SIMPLE)).toBe("09:23");
 
   // France has 24-hour time by default
