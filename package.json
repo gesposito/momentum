@@ -2,10 +2,28 @@
   "name": "momentum",
   "version": "0.1.0",
   "description": "Luxon-compatible immutable dates, durations and intervals, powered by Temporal",
-  "keywords": ["date", "time", "temporal", "luxon", "immutable", "timezone"],
+  "keywords": [
+    "date",
+    "time",
+    "temporal",
+    "luxon",
+    "immutable",
+    "timezone"
+  ],
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "test": "TZ=America/New_York LANG=en_US.utf8 jest --coverage",
+    "jest": "TZ=America/New_York LANG=en_US.utf8 jest",
+    "benchmark": "bun benchmarks/index.js"
+  },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "babel-jest": "^29.7.0",
+    "benchmark": "^2.1.4",
+    "jest": "^29.7.0"
   }
 }
