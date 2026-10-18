@@ -1,6 +1,6 @@
 /* global test expect */
 
-import { DateTime, Info } from "../../src/luxon";
+import { DateTime, Info } from "../../src/momentum";
 import Helpers, { supportsMinDaysInFirstWeek } from "../helpers";
 
 const withDefaultWeekSettings = Helpers.setUnset("defaultWeekSettings");

@@ -1,5 +1,5 @@
 /* global test expect */
-import { DateTime, Interval, Duration, Settings } from "../../src/luxon";
+import { DateTime, Interval, Duration, Settings } from "../../src/momentum";
 import Helpers from "../helpers";
 
 const withThrowOnInvalid = Helpers.setUnset("throwOnInvalid");

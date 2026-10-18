@@ -1,5 +1,5 @@
 /* global test expect */
-import { DateTime } from "../../src/luxon";
+import { DateTime } from "../../src/momentum";
 
 // you hate to see a class like this, but here we are
 

@@ -1,5 +1,5 @@
 /* global test expect */
-import { DateTime, FixedOffsetZone, IANAZone } from "../../src/luxon";
+import { DateTime, FixedOffsetZone, IANAZone } from "../../src/momentum";
 
 test("FixedOffsetZone.utcInstance returns a singleton", () => {
   expect(FixedOffsetZone.utcInstance).toBe(FixedOffsetZone.utcInstance);

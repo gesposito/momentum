@@ -1,5 +1,5 @@
 /* global test expect */
-import { Duration } from "../../src/luxon";
+import { Duration } from "../../src/momentum";
 
 //------
 // years/months/days/hours/minutes/seconds/milliseconds

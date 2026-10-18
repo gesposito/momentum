@@ -1,5 +1,5 @@
 /* global test expect */
-import { DateTime, Interval } from "../../src/luxon";
+import { DateTime, Interval } from "../../src/momentum";
 
 const Helpers = require("../helpers");
 

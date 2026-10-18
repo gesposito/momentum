@@ -1,6 +1,6 @@
 /* global test expect */
 
-import { DateTime, Settings, IANAZone } from "../../src/luxon";
+import { DateTime, Settings, IANAZone } from "../../src/momentum";
 
 var Helpers = require("../helpers");
 

@@ -1,5 +1,5 @@
 /* global test expect */
-import { DateTime } from "../../src/luxon";
+import { DateTime } from "../../src/momentum";
 import Helpers, { cldrMajorVersion } from "../helpers";
 import Settings from "../../src/settings";
 import { ConflictingSpecificationError } from "../../src/errors";

@@ -1,6 +1,6 @@
 /* global test expect */
 
-import { DateTime } from "../../src/luxon";
+import { DateTime } from "../../src/momentum";
 
 test("equals self", () => {
   const l = DateTime.now();

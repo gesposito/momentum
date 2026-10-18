@@ -1,5 +1,5 @@
 /* global test expect */
-import { Info } from "../../src/luxon";
+import { Info } from "../../src/momentum";
 import { supportsMinDaysInFirstWeek } from "../helpers";
 
 const Helpers = require("../helpers");

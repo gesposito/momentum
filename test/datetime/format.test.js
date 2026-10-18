@@ -1,6 +1,6 @@
 /* global test expect */
 
-import { DateTime, Zone, FixedOffsetZone } from "../../src/luxon";
+import { DateTime, Zone, FixedOffsetZone } from "../../src/momentum";
 import { InvalidUnitError } from "../../src/errors";
 
 const dtMaker = () =>

@@ -1,6 +1,6 @@
 /* global test expect */
 
-import { DateTime, Settings } from "../../src/luxon";
+import { DateTime, Settings } from "../../src/momentum";
 import Helpers, { supportsMinDaysInFirstWeek } from "../helpers";
 
 const withDefaultLocale = Helpers.withDefaultLocale,

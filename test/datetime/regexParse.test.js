@@ -1,6 +1,6 @@
 /* global test expect */
 
-import { DateTime } from "../../src/luxon";
+import { DateTime } from "../../src/momentum";
 import { withNow } from "../helpers";
 
 //------

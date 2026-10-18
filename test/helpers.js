@@ -1,5 +1,5 @@
 /* global test */
-import { DateTime, Settings } from "../src/luxon";
+import { DateTime, Settings } from "../src/momentum";
 import { hasLocaleWeekInfo } from "../src/impl/util";
 
 exports.withoutRTF = function (name, f) {

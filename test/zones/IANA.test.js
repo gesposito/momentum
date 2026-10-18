@@ -1,5 +1,5 @@
 /* global test expect */
-import { FixedOffsetZone, IANAZone } from "../../src/luxon";
+import { FixedOffsetZone, IANAZone } from "../../src/momentum";
 
 test("IANAZone.create returns a singleton per zone name", () => {
   expect(IANAZone.create("UTC")).toBe(IANAZone.create("UTC"));

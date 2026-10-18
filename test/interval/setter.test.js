@@ -1,5 +1,5 @@
 /* global test expect */
-import { Interval } from "../../src/luxon";
+import { Interval } from "../../src/momentum";
 
 const Helpers = require("../helpers");
 

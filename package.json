@@ -14,7 +14,8 @@
   "scripts": {
     "test": "TZ=America/New_York LANG=en_US.utf8 jest --coverage",
     "jest": "TZ=America/New_York LANG=en_US.utf8 jest",
-    "benchmark": "bun benchmarks/index.js"
+    "benchmark": "bun benchmarks/index.js",
+    "sync-tests": "bun scripts/sync-tests.ts"
   },
   "engines": {
     "node": ">=20"
