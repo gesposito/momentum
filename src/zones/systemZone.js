@@ -1,7 +1,36 @@
 import { formatOffset, parseZoneInfo } from "../impl/util.js";
+import { isRangeError, normalizeTimeZoneId, offsetAt, systemTimeZoneId } from "../impl/temporal.js";
 import Zone from "../zone.js";
 
 let singleton = null;
+let systemZoneCache = null;
+
+// The system zone's name as Temporal reports it, and the Temporal time zone that computes its
+// offsets. Engines can report a name Temporal itself rejects (Node.js reports "Etc/Unknown" when
+// TZ is empty); Luxon keeps such a name while `Date` computes in UTC, and so does momentum.
+// Cached until Settings.resetCaches() is called.
+function systemZoneInfo() {
+  if (systemZoneCache === null) {
+    const name = systemTimeZoneId();
+    systemZoneCache = { name, id: normalizeTimeZoneId(name) ?? "UTC" };
+  }
+  return systemZoneCache;
+}
+
+/**
+ * Identifier of the Temporal time zone that computes the system zone's offsets.
+ * @private
+ */
+export function systemZoneId() {
+  return systemZoneInfo().id;
+}
+
+/**
+ * @private
+ */
+export function resetSystemZoneCache() {
+  systemZoneCache = null;
+}
 
 /**
  * Represents the local zone for this JavaScript environment.
@@ -26,7 +55,7 @@ export default class SystemZone extends Zone {
 
   /** @override **/
   get name() {
-    return new Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return systemZoneInfo().name;
   }
 
   /** @override **/
@@ -46,7 +75,13 @@ export default class SystemZone extends Zone {
 
   /** @override **/
   offset(ts) {
-    return -new Date(ts).getTimezoneOffset();
+    if (!Number.isFinite(ts)) return NaN;
+    try {
+      return offsetAt(systemZoneId(), ts);
+    } catch (e) {
+      if (!isRangeError(e)) throw e;
+      return NaN;
+    }
   }
 
   /** @override **/

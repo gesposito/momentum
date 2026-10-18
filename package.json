@@ -13,10 +13,11 @@
   "license": "MIT",
   "scripts": {
     "test": "TZ=America/New_York LANG=en_US.utf8 jest --coverage",
+    "test:polyfill": "MOMENTUM_TEMPORAL=polyfill TZ=America/New_York LANG=en_US.utf8 jest",
     "jest": "TZ=America/New_York LANG=en_US.utf8 jest",
+    "test:bun": "TZ=America/New_York bun test",
     "benchmark": "bun benchmarks/index.js",
-    "sync-tests": "bun scripts/sync-tests.ts",
-    "test:bun": "TZ=America/New_York bun test"
+    "sync-tests": "bun scripts/sync-tests.ts"
   },
   "engines": {
     "node": ">=20"
@@ -26,6 +27,15 @@
     "@babel/preset-env": "^7.26.0",
     "babel-jest": "^29.7.0",
     "benchmark": "^2.1.4",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "temporal-polyfill": "^1.0.6"
+  },
+  "peerDependencies": {
+    "temporal-polyfill": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "temporal-polyfill": {
+      "optional": true
+    }
   }
 }

@@ -59,3 +59,15 @@ export class ZoneIsAbstractError extends LuxonError {
     super("Zone is an abstract class");
   }
 }
+
+/**
+ * Thrown when the runtime has no `Temporal` global. Either run on an engine that ships Temporal,
+ * or import a polyfill first.
+ */
+export class TemporalUnavailableError extends LuxonError {
+  constructor() {
+    super(
+      "Temporal is not available in this environment. Import a polyfill (for example `temporal-polyfill/global`) before using the library."
+    );
+  }
+}

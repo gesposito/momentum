@@ -1,4 +1,4 @@
-import SystemZone from "./zones/systemZone.js";
+import SystemZone, { resetSystemZoneCache } from "./zones/systemZone.js";
 import IANAZone from "./zones/IANAZone.js";
 import Locale from "./impl/locale.js";
 import DateTime from "./datetime.js";
@@ -176,5 +176,6 @@ export default class Settings {
     IANAZone.resetCache();
     DateTime.resetCache();
     resetDigitRegexCache();
+    resetSystemZoneCache();
   }
 }

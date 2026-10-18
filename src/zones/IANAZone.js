@@ -1,60 +1,33 @@
-import { formatOffset, parseZoneInfo, isUndefined, objToLocalTS } from "../impl/util.js";
+import { formatOffset, parseZoneInfo } from "../impl/util.js";
+import { isRangeError, normalizeTimeZoneId, offsetAt } from "../impl/temporal.js";
 import Zone from "../zone.js";
 
-const dtfCache = new Map();
-function makeDTF(zoneName) {
-  let dtf = dtfCache.get(zoneName);
-  if (dtf === undefined) {
-    dtf = new Intl.DateTimeFormat("en-US", {
-      hour12: false,
-      timeZone: zoneName,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      era: "short",
-    });
-    dtfCache.set(zoneName, dtf);
-  }
-  return dtf;
-}
-
-const typeToPos = {
-  year: 0,
-  month: 1,
-  day: 2,
-  era: 3,
-  hour: 4,
-  minute: 5,
-  second: 6,
-};
-
-function hackyOffset(dtf, date) {
-  const formatted = dtf.format(date).replace(/\u200E/g, ""),
-    parsed = /(\d+)\/(\d+)\/(\d+) (AD|BC),? (\d+):(\d+):(\d+)/.exec(formatted),
-    [, fMonth, fDay, fYear, fadOrBc, fHour, fMinute, fSecond] = parsed;
-  return [fYear, fMonth, fDay, fadOrBc, fHour, fMinute, fSecond];
-}
-
-function partsOffset(dtf, date) {
-  const formatted = dtf.formatToParts(date);
-  const filled = [];
-  for (let i = 0; i < formatted.length; i++) {
-    const { type, value } = formatted[i];
-    const pos = typeToPos[type];
-
-    if (type === "era") {
-      filled[pos] = value;
-    } else if (!isUndefined(pos)) {
-      filled[pos] = parseInt(value, 10);
-    }
-  }
-  return filled;
-}
-
 const ianaZoneCache = new Map();
+const normalizedNameCache = new Map();
+
+// Identifiers that are links to UTC in the IANA database. They normalize to "UTC", which is what
+// Intl.DateTimeFormat#resolvedOptions() has historically reported for them.
+const utcAliases = new Set([
+  "utc",
+  "etc/utc",
+  "etc/uct",
+  "etc/universal",
+  "etc/zulu",
+  "uct",
+  "universal",
+  "zulu",
+  "gmt",
+  "etc/gmt",
+  "etc/gmt+0",
+  "etc/gmt-0",
+  "etc/gmt0",
+  "etc/greenwich",
+  "gmt+0",
+  "gmt-0",
+  "gmt0",
+  "greenwich",
+]);
+
 /**
  * A zone identified by an IANA identifier, like America/New_York
  * @implements {Zone}
@@ -78,7 +51,7 @@ export default class IANAZone extends Zone {
    */
   static resetCache() {
     ianaZoneCache.clear();
-    dtfCache.clear();
+    normalizedNameCache.clear();
   }
 
   /**
@@ -107,24 +80,27 @@ export default class IANAZone extends Zone {
 
   /**
    * Normalize the name of the provided IANA zone or return null
-   * if it is not a valid IANA zone.
+   * if it is not a valid IANA zone. Casing is normalized and aliases of UTC resolve to "UTC";
+   * other link names are preserved as given.
    * @param {string} zone - The string to normalize
    * @example IANAZone.normalizeZone("America/New_York") //=> "America/New_York"
    * @example IANAZone.normalizeZone("america/NEw_York") //=> "America/New_York"
-   * @example IANAZone.normalizeZone("EST5EDT") //=> "America/New_York"
+   * @example IANAZone.normalizeZone("Etc/GMT") //=> "UTC"
    * @example IANAZone.normalizeZone("Fantasia/Castle") //=> null
    * @example IANAZone.normalizeZone("Sport~~blorp") //=> null
    * @return {string|null}
    */
   static normalizeZone(zone) {
-    if (!zone) {
+    if (!zone || typeof zone !== "string") {
       return null;
     }
-    try {
-      return new Intl.DateTimeFormat("en-US", { timeZone: zone }).resolvedOptions().timeZone;
-    } catch (e) {
-      return null;
+    let normalized = normalizedNameCache.get(zone);
+    if (normalized === undefined) {
+      const id = normalizeTimeZoneId(zone);
+      normalized = id === null ? null : utcAliases.has(id.toLowerCase()) ? "UTC" : id;
+      normalizedNameCache.set(zone, normalized);
     }
+    return normalized;
   }
 
   constructor(name) {
@@ -133,7 +109,7 @@ export default class IANAZone extends Zone {
     /** @private **/
     this.valid = normalizedName != null;
     // For backwards compatibility we only normalize in casing, otherwise would also normalize something like
-    // EST5EDT to America/New_York.
+    // Etc/GMT to UTC.
     /** @private **/
     this.zoneName =
       normalizedName && normalizedName.toLowerCase() === name.toLowerCase() ? normalizedName : name;
@@ -199,37 +175,13 @@ export default class IANAZone extends Zone {
    * @return {number}
    */
   offset(ts) {
-    if (!this.valid) return NaN;
-    const date = new Date(ts);
-
-    if (isNaN(date)) return NaN;
-
-    const dtf = makeDTF(this.name);
-    let [year, month, day, adOrBc, hour, minute, second] = dtf.formatToParts
-      ? partsOffset(dtf, date)
-      : hackyOffset(dtf, date);
-
-    if (adOrBc === "BC") {
-      year = -Math.abs(year) + 1;
+    if (!this.valid || !Number.isFinite(ts)) return NaN;
+    try {
+      return offsetAt(this.zoneName, ts);
+    } catch (e) {
+      if (!isRangeError(e)) throw e;
+      return NaN;
     }
-
-    // because we're using hour12 and https://bugs.chromium.org/p/chromium/issues/detail?id=1025564&can=2&q=%2224%3A00%22%20datetimeformat
-    const adjustedHour = hour === 24 ? 0 : hour;
-
-    const asUTC = objToLocalTS({
-      year,
-      month,
-      day,
-      hour: adjustedHour,
-      minute,
-      second,
-      millisecond: 0,
-    });
-
-    let asTS = +date;
-    const over = asTS % 1000;
-    asTS -= over >= 0 ? over : 1000 + over;
-    return (asUTC - asTS) / (60 * 1000);
   }
 
   /**
