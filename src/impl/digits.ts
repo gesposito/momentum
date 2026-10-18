@@ -44,7 +44,7 @@ const numberingSystemsUTF16: Record<string, [number, number]> = {
   tibt: [3872, 3881],
 };
 
-const hanidecChars = numberingSystems.hanidec.replace(/[\[|\]]/g, "").split("");
+const hanidecChars = /* @__PURE__ */ numberingSystems.hanidec.replace(/[\[|\]]/g, "").split("");
 
 export function parseDigits(str: string): number {
   const value = parseInt(str, 10);
@@ -71,7 +71,7 @@ export function parseDigits(str: string): number {
 }
 
 // cache of {numberingSystem: {append: regex}}
-const digitRegexCache = new Map<string, Map<string, RegExp>>();
+const digitRegexCache = /* @__PURE__ */ new Map<string, Map<string, RegExp>>();
 export function resetDigitRegexCache(): void {
   digitRegexCache.clear();
 }

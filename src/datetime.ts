@@ -90,7 +90,7 @@ import type {
 
 const INVALID = "Invalid DateTime";
 const MAX_DATE = 8.64e15;
-const INSPECT = Symbol.for("nodejs.util.inspect.custom");
+const INSPECT = /* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom");
 
 interface DateTimeConfig {
   ts?: number;
@@ -663,7 +663,7 @@ let zoneOffsetTs: number | undefined;
  *
  * @ignore
  */
-const zoneOffsetGuessCache = new Map<string, number>();
+const zoneOffsetGuessCache = /* @__PURE__ */ new Map<string, number>();
 
 /**
  * A DateTime is an immutable data structure representing a specific date and time and accompanying methods. It contains class and instance methods for creating, parsing, interrogating, transforming, and formatting them.

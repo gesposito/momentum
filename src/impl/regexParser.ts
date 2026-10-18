@@ -77,18 +77,18 @@ function simpleParse(...keys: string[]): Extractor {
 const offsetRegex = /(?:([Zz])|([+-]\d\d)(?::?(\d\d))?)/;
 const isoExtendedZone = `(?:${offsetRegex.source}?(?:\\[(${ianaRegex.source})\\])?)?`;
 const isoTimeBaseRegex = /(\d\d)(?::?(\d\d)(?::?(\d\d)(?:[.,](\d{1,30}))?)?)?/;
-const isoTimeRegex = RegExp(`${isoTimeBaseRegex.source}${isoExtendedZone}`);
-const isoTimeExtensionRegex = RegExp(`(?:[Tt]${isoTimeRegex.source})?`);
+const isoTimeRegex = /* @__PURE__ */ RegExp(`${isoTimeBaseRegex.source}${isoExtendedZone}`);
+const isoTimeExtensionRegex = /* @__PURE__ */ RegExp(`(?:[Tt]${isoTimeRegex.source})?`);
 const isoYmdRegex = /([+-]\d{6}|\d{4})(?:-?(\d\d)(?:-?(\d\d))?)?/;
 const isoWeekRegex = /(\d{4})-?W(\d\d)(?:-?(\d))?/;
 const isoOrdinalRegex = /(\d{4})-?(\d{3})/;
-const extractISOWeekData = simpleParse("weekYear", "weekNumber", "weekday");
-const extractISOOrdinalData = simpleParse("year", "ordinal");
+const extractISOWeekData = /* @__PURE__ */ simpleParse("weekYear", "weekNumber", "weekday");
+const extractISOOrdinalData = /* @__PURE__ */ simpleParse("year", "ordinal");
 const sqlYmdRegex = /(\d{4})-(\d\d)-(\d\d)/; // dumbed-down version of the ISO one
-const sqlTimeRegex = RegExp(
+const sqlTimeRegex = /* @__PURE__ */ RegExp(
   `${isoTimeBaseRegex.source} ?(?:${offsetRegex.source}|(${ianaRegex.source}))?`
 );
-const sqlTimeExtensionRegex = RegExp(`(?: ${sqlTimeRegex.source})?`);
+const sqlTimeExtensionRegex = /* @__PURE__ */ RegExp(`(?: ${sqlTimeRegex.source})?`);
 
 function int(match: RegExpExecArray, pos: number, fallback?: number): number | undefined {
   const m = match[pos];
@@ -136,7 +136,7 @@ function extractIANAZone(
 
 // ISO time parsing
 
-const isoTimeOnly = RegExp(`^T?${isoTimeBaseRegex.source}$`);
+const isoTimeOnly = /* @__PURE__ */ RegExp(`^T?${isoTimeBaseRegex.source}$`);
 
 // ISO duration parsing
 
@@ -274,39 +274,39 @@ function extractASCII(match: RegExpExecArray): ParseResult {
   return [result, FixedOffsetZone.utcInstance];
 }
 
-const isoYmdWithTimeExtensionRegex = combineRegexes(
+const isoYmdWithTimeExtensionRegex = /* @__PURE__ */ combineRegexes(
   isoYmdRegex,
   isoTimeExtensionRegex
 );
-const isoWeekWithTimeExtensionRegex = combineRegexes(
+const isoWeekWithTimeExtensionRegex = /* @__PURE__ */ combineRegexes(
   isoWeekRegex,
   isoTimeExtensionRegex
 );
-const isoOrdinalWithTimeExtensionRegex = combineRegexes(
+const isoOrdinalWithTimeExtensionRegex = /* @__PURE__ */ combineRegexes(
   isoOrdinalRegex,
   isoTimeExtensionRegex
 );
-const isoTimeCombinedRegex = combineRegexes(isoTimeRegex);
+const isoTimeCombinedRegex = /* @__PURE__ */ combineRegexes(isoTimeRegex);
 
-const extractISOYmdTimeAndOffset = combineExtractors(
+const extractISOYmdTimeAndOffset = /* @__PURE__ */ combineExtractors(
   extractISOYmd,
   extractISOTime,
   extractISOOffset,
   extractIANAZone
 );
-const extractISOWeekTimeAndOffset = combineExtractors(
+const extractISOWeekTimeAndOffset = /* @__PURE__ */ combineExtractors(
   extractISOWeekData,
   extractISOTime,
   extractISOOffset,
   extractIANAZone
 );
-const extractISOOrdinalDateAndTime = combineExtractors(
+const extractISOOrdinalDateAndTime = /* @__PURE__ */ combineExtractors(
   extractISOOrdinalData,
   extractISOTime,
   extractISOOffset,
   extractIANAZone
 );
-const extractISOTimeAndOffset = combineExtractors(
+const extractISOTimeAndOffset = /* @__PURE__ */ combineExtractors(
   extractISOTime,
   extractISOOffset,
   extractIANAZone
@@ -331,12 +331,12 @@ export function parseISODate(s: string): ParseResult {
 // Note: Do not optimize the outer non-capturing group, it is necessary, because the
 // regex is combined with other regexes and contains |
 const partialIsoIntervalEndDate = /(?:(?:(\d\d)-)?(\d\d)?|(?:W(\d\d)-)?(\d)|(\d{3}))/;
-const isoIntervalEndDateTime = combineRegexes(
+const isoIntervalEndDateTime = /* @__PURE__ */ combineRegexes(
   partialIsoIntervalEndDate,
   isoTimeExtensionRegex
 );
 
-const extractPartialIsoIntervalEndDate = simpleParse(
+const extractPartialIsoIntervalEndDate = /* @__PURE__ */ simpleParse(
   "month",
   "day",
   "weekNumber",
@@ -344,7 +344,7 @@ const extractPartialIsoIntervalEndDate = simpleParse(
   "ordinal"
 );
 
-const extractISOIntervalPartialDateAndTime = combineExtractors(
+const extractISOIntervalPartialDateAndTime = /* @__PURE__ */ combineExtractors(
   extractPartialIsoIntervalEndDate,
   extractISOTime,
   extractISOOffset,
@@ -379,19 +379,19 @@ export function parseISODuration(s: string): ParseResult {
   return parse(s, [isoDuration, extractISODuration]);
 }
 
-const extractISOTimeOnly = combineExtractors(extractISOTime);
+const extractISOTimeOnly = /* @__PURE__ */ combineExtractors(extractISOTime);
 
 export function parseISOTimeOnly(s: string): ParseResult {
   return parse(s, [isoTimeOnly, extractISOTimeOnly]);
 }
 
-const sqlYmdWithTimeExtensionRegex = combineRegexes(
+const sqlYmdWithTimeExtensionRegex = /* @__PURE__ */ combineRegexes(
   sqlYmdRegex,
   sqlTimeExtensionRegex
 );
-const sqlTimeCombinedRegex = combineRegexes(sqlTimeRegex);
+const sqlTimeCombinedRegex = /* @__PURE__ */ combineRegexes(sqlTimeRegex);
 
-const extractISOTimeOffsetAndIANAZone = combineExtractors(
+const extractISOTimeOffsetAndIANAZone = /* @__PURE__ */ combineExtractors(
   extractISOTime,
   extractISOOffset,
   extractIANAZone

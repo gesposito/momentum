@@ -11,17 +11,56 @@
     "timezone"
   ],
   "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "./src/polyfill.ts",
+    "./build/polyfill.js"
+  ],
+  "main": "./build/momentum.js",
+  "types": "./build/types/momentum.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/types/momentum.d.ts",
+      "default": "./build/momentum.js"
+    },
+    "./polyfill": {
+      "types": "./build/types/polyfill.d.ts",
+      "default": "./build/polyfill.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "build",
+    "src",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "build": "bun run build:js && bun run build:types",
+    "build:js": "bun scripts/build.ts",
+    "build:types": "tsc -p tsconfig.build.json",
     "typecheck": "bun check",
     "test": "TZ=America/New_York LANG=en_US.utf8 jest --coverage",
     "test:polyfill": "MOMENTUM_TEMPORAL=polyfill TZ=America/New_York LANG=en_US.utf8 jest",
     "jest": "TZ=America/New_York LANG=en_US.utf8 jest",
     "test:bun": "TZ=America/New_York bun test",
     "benchmark": "bun benchmarks/index.js",
-    "sync-tests": "bun scripts/sync-tests.ts"
+    "sync-tests": "bun scripts/sync-tests.ts",
+    "prepack": "bun run build"
   },
-  "engines": {
-    "node": ">=20"
+  "dependencies": {
+    "temporal-spec": "^1.0.1"
+  },
+  "peerDependencies": {
+    "temporal-polyfill": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "temporal-polyfill": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
@@ -32,16 +71,5 @@
     "jest": "^29.7.0",
     "temporal-polyfill": "^1.0.6",
     "typescript": "^7.0.2"
-  },
-  "peerDependencies": {
-    "temporal-polyfill": "^1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "temporal-polyfill": {
-      "optional": true
-    }
-  },
-  "dependencies": {
-    "temporal-spec": "^1.0.1"
   }
 }

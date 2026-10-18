@@ -1,7 +1,7 @@
-module.exports = {
+export default {
   testEnvironment: "node",
   roots: ["test"],
-  coverageDirectory: "build/coverage",
+  coverageDirectory: "coverage",
   collectCoverageFrom: ["src/**/*.ts", "!src/zone.ts", "!src/polyfill.ts"],
   transform: {
     "^.+\\.[jt]s$": "babel-jest",

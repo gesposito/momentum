@@ -113,7 +113,7 @@ interface OffsetWindow {
 }
 
 const WINDOWS_PER_ZONE = 8;
-const offsetWindows = new Map<string, OffsetWindow[]>();
+const offsetWindows = /* @__PURE__ */ new Map<string, OffsetWindow[]>();
 
 /**
  * Forget cached offset windows. Should only be necessary in testing scenarios.

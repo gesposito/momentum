@@ -26,7 +26,7 @@ export interface LocaleCloneOptions {
 
 // todo - remap caching
 
-const intlLFCache = new Map<string, Intl.ListFormat>();
+const intlLFCache = /* @__PURE__ */ new Map<string, Intl.ListFormat>();
 function getCachedLF(locString: string, opts: Intl.ListFormatOptions = {}): Intl.ListFormat {
   const key = JSON.stringify([locString, opts]);
   let dtf = intlLFCache.get(key);
@@ -37,7 +37,7 @@ function getCachedLF(locString: string, opts: Intl.ListFormatOptions = {}): Intl
   return dtf;
 }
 
-const intlDTCache = new Map<string, Intl.DateTimeFormat>();
+const intlDTCache = /* @__PURE__ */ new Map<string, Intl.DateTimeFormat>();
 function getCachedDTF(
   locString: string,
   opts: Intl.DateTimeFormatOptions = {}
@@ -51,7 +51,7 @@ function getCachedDTF(
   return dtf;
 }
 
-const intlNumCache = new Map<string, Intl.NumberFormat>();
+const intlNumCache = /* @__PURE__ */ new Map<string, Intl.NumberFormat>();
 function getCachedINF(locString: string, opts: Intl.NumberFormatOptions = {}): Intl.NumberFormat {
   const key = JSON.stringify([locString, opts]);
   let inf = intlNumCache.get(key);
@@ -62,7 +62,7 @@ function getCachedINF(locString: string, opts: Intl.NumberFormatOptions = {}): I
   return inf;
 }
 
-const intlRelCache = new Map<string, Intl.RelativeTimeFormat>();
+const intlRelCache = /* @__PURE__ */ new Map<string, Intl.RelativeTimeFormat>();
 function getCachedRTF(
   locString: string,
   opts: RelativeFormatterOptions = {}
@@ -87,7 +87,7 @@ function systemLocale(): string {
   }
 }
 
-const intlResolvedOptionsCache = new Map<string, Intl.ResolvedDateTimeFormatOptions>();
+const intlResolvedOptionsCache = /* @__PURE__ */ new Map<string, Intl.ResolvedDateTimeFormatOptions>();
 function getCachedIntResolvedOptions(locString: string): Intl.ResolvedDateTimeFormatOptions {
   let opts = intlResolvedOptionsCache.get(locString);
   if (opts === undefined) {
@@ -97,7 +97,7 @@ function getCachedIntResolvedOptions(locString: string): Intl.ResolvedDateTimeFo
   return opts;
 }
 
-const weekInfoCache = new Map<string, WeekSettings>();
+const weekInfoCache = /* @__PURE__ */ new Map<string, WeekSettings>();
 function getCachedWeekInfo(locString: string): WeekSettings {
   let data = weekInfoCache.get(locString);
   if (!data) {

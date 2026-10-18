@@ -29,7 +29,7 @@ import type {
 } from "./types.js";
 
 const INVALID = "Invalid Duration";
-const INSPECT = Symbol.for("nodejs.util.inspect.custom");
+const INSPECT = /* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom");
 
 type Matrix = Record<string, Record<string, number>>;
 
@@ -137,7 +137,7 @@ const orderedUnits: DurationUnit[] = [
   "milliseconds",
 ];
 
-const reverseUnits = orderedUnits.slice(0).reverse();
+const reverseUnits = /* @__PURE__ */ orderedUnits.slice(0).reverse();
 
 // This is a map of which units to convert
 // for toHuman due to missing support from Intl.

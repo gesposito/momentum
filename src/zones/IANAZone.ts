@@ -8,12 +8,12 @@ import {
 import Zone from "../zone.js";
 import type { ZoneOffsetFormat, ZoneOffsetOptions } from "../types.js";
 
-const ianaZoneCache = new Map<string, IANAZone>();
-const normalizedNameCache = new Map<string, string | null>();
+const ianaZoneCache = /* @__PURE__ */ new Map<string, IANAZone>();
+const normalizedNameCache = /* @__PURE__ */ new Map<string, string | null>();
 
 // Identifiers that are links to UTC in the IANA database. They normalize to "UTC", which is what
 // Intl.DateTimeFormat#resolvedOptions() has historically reported for them.
-const utcAliases = new Set([
+const utcAliases = /* @__PURE__ */ new Set([
   "utc",
   "etc/utc",
   "etc/uct",

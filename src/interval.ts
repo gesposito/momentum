@@ -18,7 +18,7 @@ import type {
 } from "./types.js";
 
 const INVALID = "Invalid Interval";
-const INSPECT = Symbol.for("nodejs.util.inspect.custom");
+const INSPECT = /* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom");
 
 interface IntervalConfig {
   start?: DateTime;
