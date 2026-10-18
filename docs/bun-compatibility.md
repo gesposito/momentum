@@ -6,7 +6,8 @@ engine, not from momentum. Nineteen fail on macOS only, because Bun uses Apple's
 (sections 1 to 4); two fail everywhere because JavaScriptCore formats date ranges with plain
 spaces (section 5), and one because Bun's snapshots do not call `toJSON()` (section 6).
 `MOMENTUM_TEMPORAL=polyfill bun test` fails the same tests, which confirms the Temporal engine
-behaves identically on both paths.
+behaves identically on both paths. The allowlist lives in `test/bun-known-failures.txt`, whose
+`[darwin]` section holds the macOS-only failures; `scripts/test-bun.ts` fails only on new failures.
 
 ## macOS only: Apple's ICU
 

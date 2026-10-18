@@ -152,11 +152,11 @@ with every expectation taken from Luxon 3.7.2. `test/momentum/` covers what mome
 Temporal interop, the polyfill entry point, the offset cache and the API-surface snapshot.
 
 `mise.toml` pins Node 26 and Bun 1.4, so with [mise](https://mise.jdx.dev) the tests run on Node's
-native Temporal. `bun run test` is the reference run. Under `bun run test:bun`, three tests fail
-on every platform only because of Bun's engine (JavaScriptCore puts plain spaces in date ranges,
-and Bun's snapshots do not call `toJSON()`), and nineteen more on macOS, where Bun uses Apple's
-ICU (Latin digits for `bn`, " at " between date and time, among others); see
-[docs/bun-compatibility.md](docs/bun-compatibility.md).
+native Temporal. `bun run test` is the reference run. `bun run test:bun` compares its failures with
+`test/bun-known-failures.txt`, the tests that fail only because of Bun's engine: three on every
+platform (JavaScriptCore puts plain spaces in date ranges, and Bun's snapshots do not call
+`toJSON()`) and nineteen more on macOS, where Bun uses Apple's ICU (Latin digits for `bn`, " at "
+between date and time, among others); see [docs/bun-compatibility.md](docs/bun-compatibility.md).
 
 `scripts/sync-tests.ts` copies Luxon's `test/` directory, rewrites the import paths, turns the
 CommonJS helper module into an ES module, and compares strings containing U+202F with Luxon's

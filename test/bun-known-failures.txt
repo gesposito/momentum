@@ -1,0 +1,28 @@
+# Tests that fail under bun test because of Bun's engine, not momentum. One name per line, as
+# printed by bun test; names after a [platform] line fail only on that process.platform. See
+# docs/bun-compatibility.md; scripts/test-bun.ts checks this list.
+Duration.fromDurationLike returns a Duration from millis
+Interval#toLocaleString defaults to the DATE_SHORT format
+Interval#toLocaleString sets the separator between days for same-month dates
+
+# Apple's ICU, which Bun uses on macOS only
+[darwin]
+DateTime#toFormat('FF') returns a medium date/time representation with seconds
+DateTime#toFormat('H') returns the hour (24-hour time)
+DateTime#toFormat('HH') returns the padded hour (24-hour time)
+DateTime#toFormat('S') returns the millisecond
+DateTime#toFormat('SSS') returns padded the millisecond
+DateTime#toFormat('ff') returns a medium date/time representation without seconds
+DateTime#toFormat('h') returns the hours
+DateTime#toFormat('hh') returns the padded hour (12-hour time)
+DateTime#toFormat('m') returns the minute
+DateTime#toFormat('mm') returns the padded minute
+DateTime#toFormat('s') returns the second
+DateTime#toFormat('ss') returns the padded second
+DateTime#toFormat('y') returns the full year
+DateTime#toFormat('yy') returns the two-digit year
+DateTime#toFormat('yyyy') returns the padded full year
+DateTime.fromFormatExplain() parses localized string with numberingSystem correctly
+Duration#toFormat localizes the numbers
+Info.months respects the locale
+Interval#toLocaleString uses locale-appropriate time formats

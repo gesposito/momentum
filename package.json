@@ -46,7 +46,7 @@
     "test": "TZ=America/New_York LANG=en_US.utf8 jest --coverage",
     "test:polyfill": "MOMENTUM_TEMPORAL=polyfill TZ=America/New_York LANG=en_US.utf8 jest",
     "jest": "TZ=America/New_York LANG=en_US.utf8 jest",
-    "test:bun": "TZ=America/New_York bun test",
+    "test:bun": "bun scripts/test-bun.ts",
     "benchmark": "bun run build:js && bun benchmarks/index.ts",
     "benchmark:compare": "bun run build:js && bun benchmarks/index.ts --compare",
     "benchmark:node": "bun run build:js && node --expose-gc benchmarks/index.ts --compare",
