@@ -1,2 +1,4 @@
 [test]
 preload = ["./test/setupTests.js"]
+# Day.js's own test suite, vendored in dayjs/, runs through scripts/test-dayjs-suite.ts
+pathIgnorePatterns = ["dayjs/**"]
