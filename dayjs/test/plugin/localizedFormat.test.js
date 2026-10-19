@@ -1,9 +1,9 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import es from '../../src/locale/es'
-import znCn from '../../src/locale/zh-cn'
-import localizedFormat from '../../src/plugin/localizedFormat'
+import dayjs from 'dayjs'
+import es from 'dayjs/locale/es'
+import znCn from 'dayjs/locale/zh-cn'
+import localizedFormat from 'dayjs/plugin/localizedFormat'
 
 dayjs.extend(localizedFormat)
 

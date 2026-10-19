@@ -1,13 +1,13 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import pluralGetSet from '../../src/plugin/pluralGetSet'
+import dayjs from 'dayjs'
+import pluralGetSet from 'dayjs/plugin/pluralGetSet'
 
 dayjs.extend(pluralGetSet)
 const warnBackup = global.console.warn
 beforeEach(() => {
   MockDate.set(new Date())
-  global.console.warn = jest.genMockFunction()
+  global.console.warn = jest.fn()
   // moment.js .years, .dates, .months will throw warn
 })
 

@@ -1,8 +1,8 @@
 import MockDate from 'mockdate'
 import dayjs from 'dayjs'
-import negativeYear from '../../src/plugin/negativeYear'
-import utc from '../../src/plugin/utc'
-import { REGEX_PARSE } from '../../src/constant'
+import negativeYear from 'dayjs/plugin/negativeYear'
+import utc from 'dayjs/plugin/utc'
+import { REGEX_PARSE } from 'dayjs/esm/constant'
 
 
 dayjs.extend(negativeYear)

@@ -1,6 +1,6 @@
-import dayjs from '../../src'
-import localizedFormat from '../../src/plugin/localizedFormat'
-import '../../src/locale/sv-fi'
+import dayjs from 'dayjs'
+import localizedFormat from 'dayjs/plugin/localizedFormat'
+import 'dayjs/locale/sv-fi'
 
 dayjs.extend(localizedFormat)
 

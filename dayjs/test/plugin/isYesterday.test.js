@@ -1,6 +1,6 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import isYesterday from '../../src/plugin/isYesterday'
+import dayjs from 'dayjs'
+import isYesterday from 'dayjs/plugin/isYesterday'
 
 dayjs.extend(isYesterday)
 

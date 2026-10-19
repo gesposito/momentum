@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import bigIntSupport from '../../src/plugin/bigIntSupport'
+import dayjs from 'dayjs'
+import bigIntSupport from 'dayjs/plugin/bigIntSupport'
 
 dayjs.extend(bigIntSupport)
 

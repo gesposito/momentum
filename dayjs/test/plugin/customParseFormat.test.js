@@ -1,13 +1,13 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import '../../src/locale/ru'
-import uk from '../../src/locale/uk'
-import '../../src/locale/zh-cn'
-import customParseFormat from '../../src/plugin/customParseFormat'
-import advancedFormat from '../../src/plugin/advancedFormat'
-import localizedFormats from '../../src/plugin/localizedFormat'
-import weekOfYear from '../../src/plugin/weekOfYear'
+import dayjs from 'dayjs'
+import 'dayjs/locale/ru'
+import uk from 'dayjs/locale/uk'
+import 'dayjs/locale/zh-cn'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+import advancedFormat from 'dayjs/plugin/advancedFormat'
+import localizedFormats from 'dayjs/plugin/localizedFormat'
+import weekOfYear from 'dayjs/plugin/weekOfYear'
 
 dayjs.extend(customParseFormat)
 dayjs.extend(localizedFormats)

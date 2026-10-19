@@ -1,10 +1,10 @@
-import dayjs from '../../src'
-import advancedFormat from '../../src/plugin/advancedFormat'
-import weekOfYear from '../../src/plugin/weekOfYear'
-import '../../src/locale/zh'
-import '../../src/locale/zh-cn'
-import '../../src/locale/zh-hk'
-import '../../src/locale/zh-tw'
+import dayjs from 'dayjs'
+import advancedFormat from 'dayjs/plugin/advancedFormat'
+import weekOfYear from 'dayjs/plugin/weekOfYear'
+import 'dayjs/locale/zh'
+import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/zh-hk'
+import 'dayjs/locale/zh-tw'
 
 dayjs.extend(advancedFormat).extend(weekOfYear)
 

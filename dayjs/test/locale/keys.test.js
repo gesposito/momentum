@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import dayjs from '../../src'
+import dayjs from 'dayjs'
 
 const localeDir = '../../src/locale'
 const Locale = []

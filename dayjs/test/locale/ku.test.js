@@ -1,8 +1,8 @@
 import moment from 'moment'
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import locale, { englishToArabicNumbersMap } from '../../src/locale/ku'
-import preParsePostFormat from '../../src/plugin/preParsePostFormat'
+import dayjs from 'dayjs'
+import locale, { englishToArabicNumbersMap } from 'dayjs/locale/ku'
+import preParsePostFormat from 'dayjs/plugin/preParsePostFormat'
 
 dayjs.extend(preParsePostFormat)
 

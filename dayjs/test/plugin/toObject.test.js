@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import toObject from '../../src/plugin/toObject'
+import dayjs from 'dayjs'
+import toObject from 'dayjs/plugin/toObject'
 
 dayjs.extend(toObject)
 

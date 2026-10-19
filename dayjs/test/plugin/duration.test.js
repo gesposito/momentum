@@ -1,9 +1,9 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import duration from '../../src/plugin/duration'
-import relativeTime from '../../src/plugin/relativeTime'
-import '../../src/locale/fr'
-import '../../src/locale/es'
+import dayjs from 'dayjs'
+import duration from 'dayjs/plugin/duration'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/fr'
+import 'dayjs/locale/es'
 
 dayjs.extend(relativeTime)
 dayjs.extend(duration)

@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import advancedFormat from '../../src/plugin/advancedFormat'
-import '../../src/locale/sv'
+import dayjs from 'dayjs'
+import advancedFormat from 'dayjs/plugin/advancedFormat'
+import 'dayjs/locale/sv'
 
 dayjs.extend(advancedFormat)
 

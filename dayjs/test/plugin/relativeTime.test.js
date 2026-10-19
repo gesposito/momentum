@@ -1,11 +1,11 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import * as C from '../../src/constant'
-import relativeTime from '../../src/plugin/relativeTime'
-import updateLocale from '../../src/plugin/updateLocale'
-import utc from '../../src/plugin/utc'
-import '../../src/locale/ru'
+import dayjs from 'dayjs'
+import * as C from 'dayjs/esm/constant'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import updateLocale from 'dayjs/plugin/updateLocale'
+import utc from 'dayjs/plugin/utc'
+import 'dayjs/locale/ru'
 
 dayjs.extend(relativeTime)
 

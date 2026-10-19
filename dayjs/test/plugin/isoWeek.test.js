@@ -1,8 +1,8 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import isoWeek from '../../src/plugin/isoWeek'
-import utc from '../../src/plugin/utc'
+import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
+import utc from 'dayjs/plugin/utc'
 
 dayjs.extend(isoWeek)
 dayjs.extend(utc)

@@ -1,6 +1,6 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src/index'
-import isBetween from '../../src/plugin/isBetween/index'
+import dayjs from 'dayjs/esm/index'
+import isBetween from 'dayjs/plugin/isBetween'
 
 dayjs.extend(isBetween)
 

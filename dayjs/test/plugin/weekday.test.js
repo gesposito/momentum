@@ -1,9 +1,9 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import weekday from '../../src/plugin/weekday'
-import '../../src/locale/zh-cn'
-import '../../src/locale/ar'
+import dayjs from 'dayjs'
+import weekday from 'dayjs/plugin/weekday'
+import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/ar'
 
 dayjs.extend(weekday)
 

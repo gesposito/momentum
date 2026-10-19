@@ -199,7 +199,9 @@ export async function analyze(
     outcomeOf: () => Outcome;
     computeOf: (r: Renderer) => Outcome;
   })[] = [];
-  const libraryDirs = new Set<string>();
+  /** The directories holding the libraries' declarations, and whether each is Day.js's. */
+  const libraryDirs = new Map<string, boolean>();
+  const ofDayjs = (s: string) => s === "dayjs" || s.startsWith("dayjs/");
   /** A listed module or one of its entry points, such as dayjs/plugin/utc. */
   const ofModules = (s: string) => modules.some((m) => s === m || s.startsWith(`${m}/`));
   const classifiedById = new Map<number, Classified | null>();
@@ -237,11 +239,13 @@ export async function analyze(
     } else if (type.flags & TypeFlags.Object) {
       const symbol = await type.getSymbol();
       const path = symbol?.declarations[0]?.path?.toLowerCase();
-      if (path !== undefined && [...libraryDirs].some((d) => path.startsWith(d))) {
+      const dir =
+        path === undefined ? undefined : [...libraryDirs.keys()].find((d) => path.startsWith(d));
+      if (dir !== undefined) {
         const printed = await checker.typeToString(type);
         const m = /^(typeof )?([\w$]+)(<.*>)?$/.exec(printed);
         // a class name counts in its own library only: Day.js's duration plugin has a Duration too
-        const inDayjs = path.includes("/node_modules/dayjs/");
+        const inDayjs = libraryDirs.get(dir)!;
         const own = (name: string): name is ClassName =>
           classNames.has(name) && dayjsClasses.has(name) === inDayjs;
         if (m)
@@ -255,7 +259,7 @@ export async function analyze(
             isStatic: m[1] !== undefined,
           };
         // dayjs is a function exported with `export =`: its type is the module's
-        else if (/^typeof import\(".*[\\/]dayjs[\\/]index\.d\.ts"\)$/.test(printed))
+        else if (inDayjs && /^typeof import\(".*[\\/]index\.d\.ts"\)$/.test(printed))
           result = { owner: "Dayjs", name: "dayjs", isStatic: true };
       }
     }
@@ -331,23 +335,36 @@ export async function analyze(
     // momentum's declarations live where the imported module and its bindings are declared;
     // following the bindings also finds them behind a module that re-exports momentum
     const bindingNodes: Node[] = [];
+    const bindingModules: string[] = [];
     for (const i of file.imports) {
       const clause = (i.node as any).importClause;
-      if (clause?.name) bindingNodes.push(clause.name);
-      for (const element of clause?.namedBindings?.elements ?? []) bindingNodes.push(element.name);
+      const names = [
+        clause?.name,
+        ...(clause?.namedBindings?.elements ?? []).map((e: any) => e.name),
+      ];
+      for (const name of names)
+        if (name) {
+          bindingNodes.push(name);
+          bindingModules.push(i.module);
+        }
     }
     const moduleSymbols = await checker.getSymbolAtLocation(
       file.imports.map((i) => (i.node as any).moduleSpecifier)
     );
     const bindingTypes = await checker.getTypeAtLocation(bindingNodes);
     const bindingSymbols = await Promise.all(bindingTypes.map((t) => t?.getSymbol()));
-    for (const symbol of [...moduleSymbols, ...bindingSymbols]) {
+    // which library a directory belongs to follows from the module it was imported as
+    const modulesOf = [...file.imports.map((i) => i.module), ...bindingModules];
+    [...moduleSymbols, ...bindingSymbols].forEach((symbol, i) => {
       const p = symbol?.declarations[0]?.path;
-      if (p) libraryDirs.add(`${dirname(p).toLowerCase()}/`);
-    }
+      if (p) {
+        const d = `${dirname(p).toLowerCase()}/`;
+        libraryDirs.set(d, (libraryDirs.get(d) ?? false) || ofDayjs(modulesOf[i]));
+      }
+    });
   }
   const inLibrary = (path: string) =>
-    [...libraryDirs].some((d) => path.toLowerCase().startsWith(d));
+    [...libraryDirs.keys()].some((d) => path.toLowerCase().startsWith(d));
 
   for (const { file, importedNames, importedFrom } of prepared) {
     if (inLibrary(file.path)) continue;

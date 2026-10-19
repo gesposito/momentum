@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../src'
-import es from '../src/locale/es'
+import dayjs from 'dayjs'
+import es from 'dayjs/locale/es'
 
 beforeEach(() => {
   MockDate.set(new Date())

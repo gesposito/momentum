@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import utc from '../../src/plugin/utc'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
 
 dayjs.extend(utc)
 

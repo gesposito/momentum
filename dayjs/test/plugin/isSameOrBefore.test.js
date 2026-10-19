@@ -1,6 +1,6 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import isSameOrBefore from '../../src/plugin/isSameOrBefore'
+import dayjs from 'dayjs'
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
 
 dayjs.extend(isSameOrBefore)
 

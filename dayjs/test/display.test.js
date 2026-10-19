@@ -1,8 +1,8 @@
 import moment from 'moment'
 import MockDate from 'mockdate'
-import dayjs from '../src'
-import th from '../src/locale/th'
-import '../src/locale/ja'
+import dayjs from 'dayjs'
+import th from 'dayjs/locale/th'
+import 'dayjs/locale/ja'
 
 beforeEach(() => {
   MockDate.set(new Date())
@@ -254,7 +254,7 @@ it('As Javascript Date -> toDate', () => {
 
 it('As JSON -> toJSON', () => {
   expect(dayjs().toJSON()).toBe(moment().toJSON())
-  global.console.warn = jest.genMockFunction()// moment.js otherString will throw warn
+  global.console.warn = jest.fn()// moment.js otherString will throw warn
   expect(dayjs('otherString').toJSON()).toBe(moment('otherString').toJSON())
   expect(dayjs('otherString').toJSON()).toBe(null)
 })

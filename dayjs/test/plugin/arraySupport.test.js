@@ -1,8 +1,8 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import arraySupport from '../../src/plugin/arraySupport'
-import utc from '../../src/plugin/utc'
+import dayjs from 'dayjs'
+import arraySupport from 'dayjs/plugin/arraySupport'
+import utc from 'dayjs/plugin/utc'
 
 dayjs.extend(utc)
 dayjs.extend(arraySupport)
@@ -35,7 +35,7 @@ const testArrs = [
 
 describe('parse array local', () => {
   testArrs.forEach((testArr) => {
-    it(testArr, () => {
+    it(String(testArr), () => {
       expect(dayjs(testArr).format())
         .toBe(moment(testArr).format())
     })
@@ -44,7 +44,7 @@ describe('parse array local', () => {
 
 describe('parse array utc', () => {
   testArrs.forEach((testArr) => {
-    it(testArr, () => {
+    it(String(testArr), () => {
       expect(dayjs.utc(testArr).format())
         .toBe(moment.utc(testArr).format())
     })

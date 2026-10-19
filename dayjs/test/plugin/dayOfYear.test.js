@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import dayOfYear from '../../src/plugin/dayOfYear'
+import dayjs from 'dayjs'
+import dayOfYear from 'dayjs/plugin/dayOfYear'
 
 dayjs.extend(dayOfYear)
 

@@ -158,7 +158,11 @@ files against reviewed outputs, the type check of the result, and the values eac
 before and after.
 
 As a larger check, applying the exact rewrites to Luxon's own test suite leaves all 1292 tests
-passing. Day.js's suite (1.11.23, run on Jest 29 against the published package) loads badMutable in
-a few files, which stops every rewrite in a project, so it was checked file by file: the 227
-rewrites in 9 of its 91 files leave every test passing except the few that freeze the clock with
-MockDate (2 in New York, 4 in Auckland), which `Temporal.Now` does not follow (see Limits).
+passing, and Day.js's own suite (1.11.23) is vendored in `dayjs/` with Day.js's source and history
+(`bun run sync-dayjs` re-vendors it from a checkout, pointing its imports at the package's entry
+points). `bun run test:dayjs-suite` runs it against that source before and after the exact
+rewrites, applied file by file since a few files load badMutable, which stops every rewrite in a
+project: the 227 rewrites in 9 of its 93 files leave every passing test passing, in New York (785
+of 788) as in Auckland (784 of 788). The rewritten suite runs on temporal-polyfill, whose
+`Temporal.Now` follows the clock the suite freezes with MockDate; native `Temporal.Now` would not
+(see Limits).

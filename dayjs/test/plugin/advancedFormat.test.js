@@ -1,14 +1,14 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import advancedFormat from '../../src/plugin/advancedFormat'
-import isoWeek from '../../src/plugin/isoWeek'
-import weekOfYear from '../../src/plugin/weekOfYear'
-import weekYear from '../../src/plugin/weekYear'
-import timezone from '../../src/plugin/timezone'
-import utc from '../../src/plugin/utc'
-import '../../src/locale/zh-cn'
-import '../../src/locale/nl'
+import dayjs from 'dayjs'
+import advancedFormat from 'dayjs/plugin/advancedFormat'
+import isoWeek from 'dayjs/plugin/isoWeek'
+import weekOfYear from 'dayjs/plugin/weekOfYear'
+import weekYear from 'dayjs/plugin/weekYear'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/nl'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)

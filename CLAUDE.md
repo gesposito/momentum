@@ -13,7 +13,9 @@ which custom zones always use. Each seam checks `isTemporalNative()`, and both c
 the whole suite. Parsing, formatting, Duration math and Interval algebra are ports of luxon. The
 git history starts from a verbatim copy of luxon (a merge with luxon's own history filtered
 to src/, test/ and benchmarks/, so `git blame` reaches the original authors; `git log --first-parent`
-shows the migration steps) and migrates it one verified step at a time.
+shows the migration steps) and migrates it one verified step at a time. Day.js's code and test
+suite are vendored the same way under `dayjs/` (tag `dayjs/4549b8d0`), as the reference the
+migration tool's Day.js rules are checked against.
 
 ## Commands (Bun for everything)
 
@@ -22,10 +24,12 @@ shows the migration steps) and migrates it one verified step at a time.
 - `bun run test:opt-out` — the same suite with `Settings.temporalNative = false`: `MOMENTUM_TEMPORAL_NATIVE=false`, read by `test/setupTests.js`, also works for `bun run test:bun` and the benchmarks
 - `bun run test:bun` — `scripts/test-bun.ts`: the same suite on `bun test` with Bun's native Temporal, compared against `test/bun-known-failures.txt` (engine-specific failures: 22 on macOS, where Bun uses Apple's ICU, 3 on Linux; see docs/bun-compatibility.md); fails only on new failures. `MOMENTUM_TEMPORAL=polyfill bun test` forces the polyfill.
 - `bun run test:dayjs-zones [zone...]` — `scripts/test-dayjs-zones.ts`: the "agree with Day.js" properties of `test/momentum/migrateDayjs.test.js`, one Jest run per system zone (ten zones with unusual DST rules by default), since Day.js's local values follow the system zone and the suite runs in New York only
+- `bun run test:dayjs-suite [zone...]` — `scripts/test-dayjs-suite.ts`: Day.js's own suite (`dayjs/test`) against the vendored source, before and after the tool's exact rewrites applied file by file (one project per file, since badMutable stops every rewrite in a project); the rewritten copy (`dayjs/.rewritten`, ignored) runs on temporal-polyfill, whose `Temporal.Now` follows the suite's MockDate clock. New York and Auckland by default
 - `bun check` — type check (`tsconfig.json`, `src` only); `bun run typecheck` also checks `migrate/` (`bun check -p migrate`)
 - `bun run build` — `scripts/build.ts` (Bun.build, ESM, `temporal-polyfill` external) + `tsc -p tsconfig.build.json` for `build/types`
 - `bun run benchmark` / `benchmark:compare` / `benchmark:node` / `benchmark:memory` / `benchmark:memory:node` — mitata port of luxon's benchmarks against the built bundle (they build first), optionally against luxon, on Bun or Node; retained memory and bundle size
 - `bun run sync-tests [path]` — re-vendor luxon's tests (default `../luxon`); applies the rewrites documented at the top of `scripts/sync-tests.ts`
+- `bun run sync-dayjs [path]` — re-vendor Day.js's `src/`, `types/`, `LICENSE` and tests into `dayjs/` (default `../dayjs`); applies the rewrites documented at the top of `scripts/sync-dayjs.ts`
 - `bun run migrate check|apply|rules [project]` — `migrate/`: the migration tool from momentum, Luxon or Day.js to native Temporal (docs/migrate.md). TypeScript 7's async compiler API (`typescript/unstable/async`, works under Bun) finds uses by type; `migrate/rules.ts` is the catalog of replacements, `migrate/differences.ts` the documented differences. Published as `@momentum-js/migrate` (command `momentum-migrate`): `migrate/bin.ts` bundled for Node by `scripts/build-migrate.ts` (`bun run build:migrate`), versioned in lockstep with the library; a release publishes both (`npm publish` at the root and in `migrate/`)
 
 ## Conventions
@@ -34,6 +38,7 @@ shows the migration steps) and migrates it one verified step at a time.
 - No import-time side effects: caches are module-level `Map`s marked `/* @__PURE__ */`, Temporal is read lazily from `globalThis` in `impl/temporal.ts`. Only `src/polyfill.ts` is side-effectful and is listed in `package.json` `sideEffects`.
 - Temporal reports unrepresentable values with `RangeError`; swallow those (invalid DateTime) and rethrow anything else (`isRangeError`).
 - `test/` is vendored from luxon except `test/setupTests.js`, `test/bun-known-failures.txt`, `test/parity/*` and `test/momentum/*`. Don't hand-edit vendored files; change `scripts/sync-tests.ts` instead.
+- `dayjs/` is vendored from Day.js 1.11.23 (`bun run sync-dayjs`): `src/`, `types/` and `LICENSE` verbatim, `test/` with its imports pointed at the dayjs package's entry points. Don't hand-edit it either; change `scripts/sync-dayjs.ts`. The `moment`, `moment-timezone` and `mockdate` devDependencies serve its tests only, pinned to the versions its lockfile resolves.
 - New tests go in `test/parity/` when they pin luxon behaviour that luxon's own suite doesn't check (take every expectation from luxon 3.7.2, the `luxon` devDependency), and in `test/momentum/` when they cover what momentum adds (Temporal interop, polyfill entry, offset cache, the two cores, API-surface snapshot). Tests written for one core set `Settings.temporalNative` themselves (`temporalCore.test.js`, `parity/dstResolution.test.js`); `optOut.test.js` holds the properties that the cores agree.
 - Randomized tests are fast-check properties built on `test/momentum/fastCheck.js` (shared configuration and generators: instants, wall clocks near transitions); never `Math.random`. `FC_NUM_RUNS=20000` fuzzes longer; a failure prints `{ seed, path }`, replayed with `FC_SEED`/`FC_PATH`.
 - A workaround for an upstream bug links its issue in a comment and has a row in `docs/upstream.md` saying what to delete when the fix ships; remove both together.

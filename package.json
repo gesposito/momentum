@@ -61,12 +61,14 @@
     "jest": "TZ=America/New_York LANG=en_US.utf8 jest",
     "test:bun": "bun scripts/test-bun.ts",
     "test:dayjs-zones": "bun scripts/test-dayjs-zones.ts",
+    "test:dayjs-suite": "bun scripts/test-dayjs-suite.ts",
     "benchmark": "bun run build:js && bun benchmarks/index.ts",
     "benchmark:compare": "bun run build:js && bun benchmarks/index.ts --compare",
     "benchmark:node": "bun run build:js && node --expose-gc benchmarks/index.ts --compare",
     "benchmark:memory": "bun run build:js && bun benchmarks/memory.ts",
     "benchmark:memory:node": "bun run build:js && node --expose-gc benchmarks/memory.ts",
     "sync-tests": "bun scripts/sync-tests.ts",
+    "sync-dayjs": "bun scripts/sync-dayjs.ts",
     "prepack": "bun run build"
   },
   "dependencies": {
@@ -91,6 +93,9 @@
     "jest": "^29.7.0",
     "luxon": "^3.7.2",
     "mitata": "^1.0.34",
+    "mockdate": "2.0.5",
+    "moment": "2.29.2",
+    "moment-timezone": "0.5.31",
     "temporal-polyfill": "^1.0.6",
     "typescript": "^7.0.2"
   }

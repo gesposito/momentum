@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import duration from '../../src/plugin/duration'
-import objectSupport from '../../src/plugin/objectSupport'
+import dayjs from 'dayjs'
+import duration from 'dayjs/plugin/duration'
+import objectSupport from 'dayjs/plugin/objectSupport'
 
 dayjs.extend(duration)
 dayjs.extend(objectSupport)

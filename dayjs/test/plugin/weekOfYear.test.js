@@ -1,9 +1,9 @@
 import moment from 'moment'
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import weekOfYear from '../../src/plugin/weekOfYear'
-import advancedFormat from '../../src/plugin/advancedFormat'
-import '../../src/locale/en-gb'
+import dayjs from 'dayjs'
+import weekOfYear from 'dayjs/plugin/weekOfYear'
+import advancedFormat from 'dayjs/plugin/advancedFormat'
+import 'dayjs/locale/en-gb'
 
 dayjs.extend(advancedFormat)
 dayjs.extend(weekOfYear)

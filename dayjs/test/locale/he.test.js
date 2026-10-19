@@ -1,7 +1,7 @@
 import moment from 'moment'
-import dayjs from '../../src'
-import relativeTime from '../../src/plugin/relativeTime'
-import '../../src/locale/he'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/he'
 
 dayjs.extend(relativeTime)
 

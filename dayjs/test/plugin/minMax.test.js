@@ -1,6 +1,6 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import minMax from '../../src/plugin/minMax'
+import dayjs from 'dayjs'
+import minMax from 'dayjs/plugin/minMax'
 
 dayjs.extend(minMax)
 

@@ -109,7 +109,8 @@ momentum is meant to be temporary. `npx @momentum-js/migrate check <project>` (o
 every use of momentum (or Luxon, or Day.js) with TypeScript's type checker and reports whether
 the rewrites with a native Temporal replacement complete the switch, listing what is left when
 they don't; `npx @momentum-js/migrate apply <project>` writes them. Rewrites are applied by
-default only when they are exact, proven against the library by property tests; those that
+default only when they are exact, proven against the library by property tests (and, for Day.js,
+by its own test suite, vendored with Day.js's source and history under `dayjs/`); those that
 differ in documented corner cases wait for `--accept`. See [docs/migrate.md](docs/migrate.md).
 
 ## Opting out of the Temporal-native core
@@ -196,6 +197,8 @@ bun run benchmark:node      # side by side with luxon, on Node
 bun run benchmark:memory    # retained memory and bundle size, side by side with luxon (Bun)
 bun run benchmark:memory:node
 bun run sync-tests      # re-vendor the tests from a luxon checkout (default ../luxon)
+bun run test:dayjs-suite    # Day.js's own suite, before and after the migration tool's rewrites
+bun run sync-dayjs      # re-vendor Day.js's code and tests from a checkout (default ../dayjs)
 bun run migrate check <project>   # how far a project is from native Temporal (docs/migrate.md)
 ```
 
@@ -204,7 +207,8 @@ it is never edited by hand. `test/parity/` checks Luxon behaviour that its suite
 with every expectation taken from Luxon 3.7.2. `test/momentum/` covers what momentum adds: the
 Temporal interop, the polyfill entry point, the offset cache, the two cores and the API-surface
 snapshot. `MOMENTUM_TEMPORAL_NATIVE=false` runs any of the test and benchmark scripts with the
-opt-out; tests written for one core set it themselves.
+opt-out; tests written for one core set it themselves. Day.js's own suite sits apart in
+`dayjs/test`, with Day.js's source, for `bun run test:dayjs-suite`.
 
 Randomized checks are [fast-check](https://fast-check.dev) properties, so a failure shrinks to a
 minimal counterexample and prints the seed and path that replay it. Each property runs 100 times

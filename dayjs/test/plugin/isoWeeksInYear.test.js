@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import isoWeeksInYear from '../../src/plugin/isoWeeksInYear'
-import isLeapYear from '../../src/plugin/isLeapYear'
+import dayjs from 'dayjs'
+import isoWeeksInYear from 'dayjs/plugin/isoWeeksInYear'
+import isLeapYear from 'dayjs/plugin/isLeapYear'
 
 dayjs.extend(isoWeeksInYear)
 dayjs.extend(isLeapYear)

@@ -1,4 +1,4 @@
-import Utils from '../src/utils'
+import Utils from 'dayjs/esm/utils'
 
 const prettyUnit = Utils.p
 const padStart = Utils.s

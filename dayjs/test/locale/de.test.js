@@ -1,10 +1,10 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import relativeTime from '../../src/plugin/relativeTime'
-import '../../src/locale/de'
-import '../../src/locale/de-at'
-import '../../src/locale/de-ch'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/de'
+import 'dayjs/locale/de-at'
+import 'dayjs/locale/de-ch'
 
 dayjs.extend(relativeTime)
 

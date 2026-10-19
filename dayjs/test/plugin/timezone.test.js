@@ -1,9 +1,9 @@
 import MockDate from 'mockdate'
 import moment from 'moment-timezone'
-import dayjs from '../../src'
-import timezone from '../../src/plugin/timezone'
-import customParseFormat from '../../src/plugin/customParseFormat'
-import utc from '../../src/plugin/utc'
+import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+import utc from 'dayjs/plugin/utc'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)

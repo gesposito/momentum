@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import relativeTime from '../../src/plugin/relativeTime'
-import '../../src/locale/sr-cyrl'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/sr-cyrl'
 
 dayjs.extend(relativeTime)
 

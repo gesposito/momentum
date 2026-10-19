@@ -1,6 +1,6 @@
 import moment from 'moment'
-import dayjs from '../../src'
-import '../../src/locale/hr'
+import dayjs from 'dayjs'
+import 'dayjs/locale/hr'
 
 it('Format month with locale function', () => {
   for (let i = 0; i <= 7; i += 1) {

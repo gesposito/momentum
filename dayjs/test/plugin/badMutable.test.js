@@ -1,10 +1,10 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import badMutable from '../../src/plugin/badMutable'
-import dayOfYear from '../../src/plugin/dayOfYear'
-import weekOfYear from '../../src/plugin/weekOfYear'
-import '../../src/locale/zh-cn'
+import dayjs from 'dayjs'
+import badMutable from 'dayjs/plugin/badMutable'
+import dayOfYear from 'dayjs/plugin/dayOfYear'
+import weekOfYear from 'dayjs/plugin/weekOfYear'
+import 'dayjs/locale/zh-cn'
 
 dayjs.extend(badMutable)
 dayjs.extend(dayOfYear)

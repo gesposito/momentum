@@ -1,8 +1,8 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import calendar from '../../src/plugin/calendar'
-import zhCn from '../../src/locale/zh-cn'
+import dayjs from 'dayjs'
+import calendar from 'dayjs/plugin/calendar'
+import zhCn from 'dayjs/locale/zh-cn'
 
 dayjs.extend(calendar)
 

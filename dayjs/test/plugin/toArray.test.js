@@ -1,7 +1,7 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import toArray from '../../src/plugin/toArray'
+import dayjs from 'dayjs'
+import toArray from 'dayjs/plugin/toArray'
 
 dayjs.extend(toArray)
 

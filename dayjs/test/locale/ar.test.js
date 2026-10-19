@@ -1,10 +1,10 @@
 import moment from 'moment'
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import relativeTime from '../../src/plugin/relativeTime'
-import preParsePostFormat from '../../src/plugin/preParsePostFormat'
-import localeData from '../../src/plugin/localeData'
-import '../../src/locale/ar'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import preParsePostFormat from 'dayjs/plugin/preParsePostFormat'
+import localeData from 'dayjs/plugin/localeData'
+import 'dayjs/locale/ar'
 
 dayjs.extend(localeData)
 dayjs.extend(relativeTime)

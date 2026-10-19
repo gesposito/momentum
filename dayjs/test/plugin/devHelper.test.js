@@ -1,8 +1,8 @@
 import MockDate from 'mockdate'
-import dayjs from '../../src'
-import customParseFormat from '../../src/plugin/customParseFormat'
-import devHelper from '../../src/plugin/devHelper'
-import localeData from '../../src/plugin/localeData'
+import dayjs from 'dayjs'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+import devHelper from 'dayjs/plugin/devHelper'
+import localeData from 'dayjs/plugin/localeData'
 
 dayjs.extend(devHelper)
 
@@ -14,7 +14,7 @@ afterEach(() => {
   MockDate.reset()
 })
 
-global.console.warn = jest.genMockFunction()
+global.console.warn = jest.fn()
 
 
 it('Warning: passing Year as a Number will be parsed as a Unix timestamp', () => {

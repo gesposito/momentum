@@ -1,10 +1,10 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import objectSupport from '../../src/plugin/objectSupport'
-import quarterOfYear from '../../src/plugin/quarterOfYear'
-import utc from '../../src/plugin/utc'
-import utils from '../../src/utils'
+import dayjs from 'dayjs'
+import objectSupport from 'dayjs/plugin/objectSupport'
+import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import utc from 'dayjs/plugin/utc'
+import utils from 'dayjs/esm/utils'
 
 dayjs.extend(utc)
 dayjs.extend(quarterOfYear)

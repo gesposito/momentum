@@ -1,8 +1,8 @@
 import moment from 'moment'
 import MockDate from 'mockdate'
-import dayjs from '../src'
-import '../src/locale/zh-cn'
-import '../src/locale/ar'
+import dayjs from 'dayjs'
+import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/ar'
 
 beforeEach(() => {
   MockDate.set(new Date())

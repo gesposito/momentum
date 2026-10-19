@@ -1,6 +1,6 @@
 import moment from 'moment'
 import MockDate from 'mockdate'
-import dayjs from '../src'
+import dayjs from 'dayjs'
 
 beforeEach(() => {
   MockDate.set(new Date())

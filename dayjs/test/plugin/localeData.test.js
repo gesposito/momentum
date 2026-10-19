@@ -1,11 +1,11 @@
 import MockDate from 'mockdate'
 import moment from 'moment'
-import dayjs from '../../src'
-import '../../src/locale/fr'
-import '../../src/locale/ru'
-import '../../src/locale/zh-cn'
-import localeData from '../../src/plugin/localeData'
-import localizedFormat from '../../src/plugin/localizedFormat'
+import dayjs from 'dayjs'
+import 'dayjs/locale/fr'
+import 'dayjs/locale/ru'
+import 'dayjs/locale/zh-cn'
+import localeData from 'dayjs/plugin/localeData'
+import localizedFormat from 'dayjs/plugin/localizedFormat'
 
 dayjs.extend(localizedFormat)
 dayjs.extend(localeData)

@@ -1,9 +1,9 @@
-import dayjs from '../../src'
-import '../../src/locale/en'
-import '../../src/locale/en-gb'
-import '../../src/locale/en-in'
-import '../../src/locale/en-tt'
-import localizedFormat from '../../src/plugin/localizedFormat'
+import dayjs from 'dayjs'
+import 'dayjs/locale/en'
+import 'dayjs/locale/en-gb'
+import 'dayjs/locale/en-in'
+import 'dayjs/locale/en-tt'
+import localizedFormat from 'dayjs/plugin/localizedFormat'
 
 dayjs.extend(localizedFormat)
 
