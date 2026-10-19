@@ -207,6 +207,10 @@ platform (JavaScriptCore puts plain spaces in date ranges, and Bun's snapshots d
 `toJSON()`) and nineteen more on macOS, where Bun uses Apple's ICU (Latin digits for `bn`, " at "
 between date and time, among others); see [docs/bun-compatibility.md](docs/bun-compatibility.md).
 
+momentum works around a few upstream bugs in Temporal polyfills, engines and Bun.
+[docs/upstream.md](docs/upstream.md) lists each one with its issue and the code its fix lets us
+delete.
+
 `scripts/sync-tests.ts` copies Luxon's `test/` directory, rewrites the import paths, turns the
 CommonJS helper module into an ES module, and compares strings containing U+202F with Luxon's
 own whitespace-tolerant matcher, because Node 26 and Bun replace the U+202F that CLDR puts

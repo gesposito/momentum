@@ -94,6 +94,10 @@ export function offsetMinutes(zdt: ZonedDateTime): number {
 // JavaScriptCore), so the fields are cheaper to read from one PlainDateTime there, whose getters
 // are plain field reads. temporal-polyfill caches the wall clock of a ZonedDateTime but builds
 // PlainDateTimes slowly, so it is read directly. Decided once per Temporal implementation.
+// Upstream: the getter cost in V8 (https://issues.chromium.org/issues/575359795) and
+// JavaScriptCore (https://bugs.webkit.org/show_bug.cgi?id=328057); the polyfill's PlainDateTime
+// cost is mostly a debug string it attaches to every object
+// (https://github.com/fullcalendar/temporal-polyfill/issues/116); see docs/upstream.md.
 let inspectedApi: TemporalApi | null = null;
 let readThroughPlainDateTime = true;
 
@@ -207,7 +211,8 @@ export function resolveWallClock(
   // That is what ZonedDateTime.from's offset: "prefer" decides; asking the zone's cached offsets
   // (offsetAt) first keeps a guess taken in another season cheap. The cache only shortlists the
   // candidate: a conversion with "later" disambiguation confirms it, so that a wrong cached
-  // window (temporal-polyfill misses a few historical transitions) can never pick an instant.
+  // window (temporal-polyfill misses a few historical transitions,
+  // https://github.com/fullcalendar/temporal-polyfill/pull/114) can never pick an instant.
   if (offsetGuess !== undefined && offsetGuess < o) {
     const later = ts + Math.round((o - offsetGuess) * 60) * 1000;
     // an instant beyond the end of Temporal's range is no candidate
@@ -341,7 +346,7 @@ function transitionWindow(timeZone: string, exact: number): OffsetWindow {
     end = upcoming ? upcoming.epochMilliseconds : Infinity;
     // the last transition before `exact`, found by walking forward from a year earlier:
     // temporal-polyfill answers getTimeZoneTransition("previous") incorrectly beyond its rule
-    // horizon
+    // horizon (https://github.com/fullcalendar/temporal-polyfill/pull/113)
     start = Math.max(exact - LOOKBACK_MS, -MAX_EPOCH_MS);
     let transition = zonedDateTime(start, timeZone).getTimeZoneTransition("next");
     while (transition !== null && transition.epochMilliseconds < exact) {
@@ -351,8 +356,9 @@ function transitionWindow(timeZone: string, exact: number): OffsetWindow {
   }
 
   // temporal-polyfill's "next" also misses a few historical transitions (Asia/Manila's move
-  // across the date line on 1844-12-31, for one), so the offset is confirmed at both ends of the
-  // window; where it differs, only the queried instant is remembered
+  // across the date line on 1844-12-31, for one:
+  // https://github.com/fullcalendar/temporal-polyfill/pull/114), so the offset is confirmed at
+  // both ends of the window; where it differs, only the queried instant is remembered
   if (
     offsetMinutes(zonedDateTime(start, timeZone)) !== offset ||
     (end !== Infinity && offsetMinutes(zonedDateTime(end - 1, timeZone)) !== offset)

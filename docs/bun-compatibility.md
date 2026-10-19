@@ -92,6 +92,9 @@ that gives the console, `Bun.inspect` and `bun:test` one value formatter, still 
 
 - `process.versions.cldr` is not exposed by Bun, so Luxon's `cldrMajorVersion()` helper returns
   null and the suite uses its modern expectations, which match Bun's ICU.
+- `bun test` fails a `toMatchSnapshot()` whose `.snap` file is read-only, even when it matches
+  ([oven-sh/bun#46051](https://github.com/oven-sh/bun/issues/46051)), so the API-surface snapshot
+  test needs a writable checkout, unlike under Jest.
 - Bun's loader rejects `test/helpers.js` as Luxon ships it (ESM imports next to CommonJS
   `exports`); `scripts/sync-tests.ts` converts it to an ES module.
 - `bun fmt` is documented but not part of any released Bun (latest 1.4.3, 2026-10-10; the
