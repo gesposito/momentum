@@ -1,9 +1,9 @@
 # Upstream issues
 
-momentum works around a few bugs and gaps in Temporal implementations, in Bun and in Luxon's test
-suite. Each workaround links its issue in a comment; this list says what the workaround costs and
-what to delete once the fix ships in every version momentum supports. The goal is for all of it,
-and eventually momentum itself, to go away.
+momentum works around a few bugs and gaps in Temporal implementations, in Bun, in Luxon's test
+suite and, for the migration tool, in TypeScript's API. Each workaround links its issue in a
+comment; this list says what the workaround costs and what to delete once the fix ships in every
+version momentum supports. The goal is for all of it, and eventually momentum itself, to go away.
 
 | Issue | What momentum does meanwhile | Delete when fixed |
 | --- | --- | --- |
@@ -18,6 +18,7 @@ and eventually momentum itself, to go away.
 | [oven-sh/bun#46043](https://github.com/oven-sh/bun/issues/46043): snapshots don't call `toJSON()` | one test in `test/bun-known-failures.txt` | its line |
 | [oven-sh/bun#46051](https://github.com/oven-sh/bun/issues/46051): a matching snapshot fails when the `.snap` file is read-only | nothing: run `bun test` from a writable checkout | |
 | Luxon's suite hardcodes U+202F before AM/PM, which Node 26's V8 replaces with a space (not reported yet) | `scripts/sync-tests.ts` compares those 9 strings with Luxon's whitespace-tolerant matcher | the rewrite |
+| [microsoft/TypeScript#63869](https://github.com/microsoft/TypeScript/issues/63869): TypeScript 7.0.2's API panics on the type of an empty array literal typed by a tuple with optional elements; [#64080](https://github.com/microsoft/TypeScript/pull/64080) fixes it in 7.1 | `typesAt()` in `migrate/analyze.ts` halves a batch that panics until the node is isolated, which gets no type, and empty arrays are not asked about | the halving, when the tool moves to TypeScript 7.1 |
 
 JavaScriptCore's replacement of thin spaces in date ranges is deliberate, so its two allowlisted
 tests stay; see [bun-compatibility.md](bun-compatibility.md).

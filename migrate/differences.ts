@@ -1,6 +1,7 @@
-// The ways a native Temporal replacement can behave differently from momentum. A rewrite that
-// carries any of these is applied only when the user accepts them (`--accept`); each one was
-// observed by comparing momentum with Temporal, see test/momentum/migrateRules.test.js.
+// The ways a native Temporal replacement can behave differently from momentum or Day.js. A
+// rewrite that carries any of these is applied only when the user accepts them (`--accept`); each
+// one was observed by comparing the library with Temporal, see test/momentum/migrateRules.test.js
+// and test/momentum/migrateDayjs.test.js.
 
 export interface Difference {
   /** One line: what changes. */
@@ -101,6 +102,68 @@ export const differences = {
     detail:
       "momentum converts with fixed factors (a month is 30 days); Temporal's total throws without " +
       "relativeTo when a duration has years, months or weeks.",
+  },
+  "dayjs-zones": {
+    summary: "Day.js values in a time zone keep a fixed UTC offset through arithmetic",
+    detail:
+      "With the timezone plugin, dayjs.tz(...) and .tz(zone) give a value with the zone's offset at " +
+      "that instant, and add, subtract and the setters keep it while computing in the system zone, " +
+      "so a day added across another zone's DST change lands an hour off (Europe/London on " +
+      "2026-03-28 12:00 plus a day is 13:00 BST). Temporal follows the zone's rules. Applies to " +
+      "projects that use the timezone plugin or utcOffset(n).",
+  },
+  "dayjs-tz": {
+    summary:
+      "Day.js's timezone plugin is exact only from 1970 to 9999, away from the system zone's DST changes",
+    detail:
+      "The plugin converts through the system zone and Date parsing: before 1970 a fraction of a " +
+      "second or an offset with seconds moves the instant (dayjs(-123046875001).tz('America/New_York') " +
+      "is a second late), near a DST change of the system zone the wall-clock fields can be an hour " +
+      "off (Australia/Lord_Howe on 1999-10-31 02:00 reads 01:30 in New York), and past the year 9999 " +
+      "the conversion fails. Temporal converts exactly.",
+  },
+  "dayjs-tz-parse": {
+    summary: "dayjs.tz reads a repeated wall-clock time by the zone's current offset",
+    detail:
+      "dayjs.tz('2026-11-01 01:30', 'America/New_York') is 01:30 EDT when the code runs in summer " +
+      "and 01:30 EST in winter; Temporal always takes the earlier instant. Skipped times move forward " +
+      "in both.",
+  },
+  "dayjs-dst-steps": {
+    summary: "around DST changes, Day.js's month and year arithmetic can move the time by an hour",
+    detail:
+      "Day.js changes the month or year through the first of the month, so a time skipped on that " +
+      "day stays shifted (1989-03-10 02:47 plus 13 months is 03:47 in New York, not 02:47), and it " +
+      "re-reads the wall clock, so the second of two repeated times becomes the first, even when " +
+      "adding 0. Temporal keeps the wall-clock time.",
+  },
+  "dayjs-offsets": {
+    summary: "Day.js rounds UTC offsets to 15 minutes",
+    detail:
+      "utcOffset() and the Z token of format() round the offset to a multiple of 15 minutes, which " +
+      "changes historical local mean time offsets such as New York's -4:56:02 before 1883; Temporal " +
+      "reports the exact offset.",
+  },
+  "dayjs-years": {
+    summary: "years before 100 or after 9999 differ",
+    detail:
+      "Day.js's startOf and endOf of years and months build dates with new Date(y, m, d), which " +
+      "reads the years 0 to 99 as 1900 to 1999 (the start of the year 99 is 1999-01-01), and " +
+      "format pads YYYY to four digits (10000-01-01, and 00-5 for the year -5) where Temporal " +
+      "writes ISO 8601's extended years (+010000-01-01, -000005-01-01).",
+  },
+  "dayjs-plugins": {
+    summary: "a Day.js plugin that patches the rewritten method stops applying",
+    detail:
+      "devHelper's warnings (diff() without a date, a timestamp passed as a string) disappear with " +
+      "the calls they watch, and a plugin the tool does not know, passed to dayjs.extend, may change " +
+      "any method: check what it patches before accepting this.",
+  },
+  "dayjs-utc-mode": {
+    summary: "isUTC is true for any value in the UTC zone",
+    detail:
+      "Day.js tells dayjs.utc() values from local ones; Temporal only knows the zone, so a local " +
+      "value is in UTC when the system zone is UTC.",
   },
 } as const satisfies Record<string, Difference>;
 

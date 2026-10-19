@@ -31,7 +31,12 @@ import {
   type Static,
 } from "./rules.js";
 
-export const defaultModules = ["@momentum-js/momentum", "@momentum-js/momentum/polyfill", "luxon"];
+export const defaultModules = [
+  "@momentum-js/momentum",
+  "@momentum-js/momentum/polyfill",
+  "luxon",
+  "dayjs",
+];
 
 const classNames: ReadonlySet<string> = new Set<ClassName>([
   "DateTime",
@@ -44,6 +49,8 @@ const classNames: ReadonlySet<string> = new Set<ClassName>([
   "FixedOffsetZone",
   "SystemZone",
   "InvalidZone",
+  "Dayjs",
+  "DayjsTimezone",
 ]);
 
 export type UseKind =
@@ -153,8 +160,18 @@ const localeSettings = new Set([
   "defaultOutputCalendar",
 ]);
 
+/** The classes of Day.js; the others are momentum's (or Luxon's). */
+const dayjsClasses: ReadonlySet<string> = new Set<ClassName>(["Dayjs", "DayjsTimezone"]);
+
+/** Libraries whose callable export stands for a class: `typeof dayjs`, as JavaScript types it. */
+const staticAliases: Readonly<Record<string, ClassName>> = { dayjs: "Dayjs" };
+
 /** Static members that test for momentum objects: wrong while momentum objects still exist. */
-const representationChecks = new Set(["DateTime.isDateTime", "Duration.isDuration"]);
+const representationChecks = new Set([
+  "DateTime.isDateTime",
+  "Duration.isDuration",
+  "Dayjs.isDayjs",
+]);
 
 const none = (reason: string): Outcome => ({ kind: "none", reason });
 
@@ -183,7 +200,26 @@ export async function analyze(
     computeOf: (r: Renderer) => Outcome;
   })[] = [];
   const libraryDirs = new Set<string>();
+  /** A listed module or one of its entry points, such as dayjs/plugin/utc. */
+  const ofModules = (s: string) => modules.some((m) => s === m || s.startsWith(`${m}/`));
   const classifiedById = new Map<number, Classified | null>();
+
+  /**
+   * The types of many nodes, in one request when possible. TypeScript 7.0.2's API panics on the
+   * type of some nodes, such as an empty array literal typed by a tuple with optional elements
+   * (https://github.com/microsoft/TypeScript/issues/63869, fixed in 7.1); halving the batch
+   * isolates them, and they get no type.
+   */
+  async function typesAt(nodes: Node[]): Promise<(Type | undefined)[]> {
+    try {
+      return await checker.getTypeAtLocation(nodes);
+    } catch (error) {
+      if (!String(error).includes("panic:")) throw error;
+      if (nodes.length === 1) return [undefined];
+      const half = Math.ceil(nodes.length / 2);
+      return [...(await typesAt(nodes.slice(0, half))), ...(await typesAt(nodes.slice(half)))];
+    }
+  }
 
   async function classify(type: Type | undefined): Promise<Classified | null> {
     if (type === undefined) return null;
@@ -202,13 +238,25 @@ export async function analyze(
       const symbol = await type.getSymbol();
       const path = symbol?.declarations[0]?.path?.toLowerCase();
       if (path !== undefined && [...libraryDirs].some((d) => path.startsWith(d))) {
-        const m = /^(typeof )?([\w$]+)(<.*>)?$/.exec(await checker.typeToString(type));
+        const printed = await checker.typeToString(type);
+        const m = /^(typeof )?([\w$]+)(<.*>)?$/.exec(printed);
+        // a class name counts in its own library only: Day.js's duration plugin has a Duration too
+        const inDayjs = path.includes("/node_modules/dayjs/");
+        const own = (name: string): name is ClassName =>
+          classNames.has(name) && dayjsClasses.has(name) === inDayjs;
         if (m)
           result = {
-            owner: classNames.has(m[2]) ? (m[2] as ClassName) : null,
+            owner: own(m[2])
+              ? m[2]
+              : m[1] !== undefined && inDayjs
+                ? (staticAliases[m[2]] ?? null)
+                : null,
             name: m[2],
             isStatic: m[1] !== undefined,
           };
+        // dayjs is a function exported with `export =`: its type is the module's
+        else if (/^typeof import\(".*[\\/]dayjs[\\/]index\.d\.ts"\)$/.test(printed))
+          result = { owner: "Dayjs", name: "dayjs", isStatic: true };
       }
     }
     classifiedById.set(type.id, result);
@@ -250,23 +298,35 @@ export async function analyze(
 
   // first the imports of every file: they tell where momentum's declarations live, and files
   // there (momentum's own source, when it sits inside the project) are not analysed
-  const prepared: { file: FileInfo; importedNames: Set<string> }[] = [];
+  const prepared: {
+    file: FileInfo;
+    importedNames: Set<string>;
+    /** The module each imported name comes from. */
+    importedFrom: Map<string, string>;
+  }[] = [];
   for (const path of loaded.files) {
     const sourceFile = await project.program.getSourceFile(path);
     if (sourceFile === undefined) continue;
     const file: FileInfo = { path, sourceFile, quote: '"', imports: [] };
     const importedNames = new Set<string>();
-    prepared.push({ file, importedNames });
+    const importedFrom = new Map<string, string>();
+    prepared.push({ file, importedNames, importedFrom });
     for (const statement of (sourceFile as any).statements as Node[]) {
       if (statement.kind !== SyntaxKind.ImportDeclaration) continue;
       const spec = (statement as any).moduleSpecifier;
-      if (spec?.kind !== SyntaxKind.StringLiteral || !modules.includes(spec.text)) continue;
+      if (spec?.kind !== SyntaxKind.StringLiteral || !ofModules(spec.text)) continue;
       file.imports.push({ node: statement, module: spec.text });
       const clause = (statement as any).importClause;
-      if (clause?.name) importedNames.add(clause.name.text);
       const bindings = clause?.namedBindings;
-      if (bindings?.kind === SyntaxKind.NamespaceImport) importedNames.add(bindings.name.text);
-      for (const element of bindings?.elements ?? []) importedNames.add(element.name.text);
+      for (const name of [
+        clause?.name,
+        bindings?.kind === SyntaxKind.NamespaceImport ? bindings.name : undefined,
+        ...(bindings?.elements ?? []).map((e: any) => e.name),
+      ])
+        if (name) {
+          importedNames.add(name.text);
+          importedFrom.set(name.text, spec.text);
+        }
     }
     // momentum's declarations live where the imported module and its bindings are declared;
     // following the bindings also finds them behind a module that re-exports momentum
@@ -289,7 +349,7 @@ export async function analyze(
   const inLibrary = (path: string) =>
     [...libraryDirs].some((d) => path.toLowerCase().startsWith(d));
 
-  for (const { file, importedNames } of prepared) {
+  for (const { file, importedNames, importedFrom } of prepared) {
     if (inLibrary(file.path)) continue;
     const { path, sourceFile } = file;
     const text = sourceFile.text;
@@ -311,7 +371,7 @@ export async function analyze(
           return;
         case SyntaxKind.ExportDeclaration: {
           const spec = (node as any).moduleSpecifier;
-          if (spec?.kind === SyntaxKind.StringLiteral && modules.includes(spec.text))
+          if (spec?.kind === SyntaxKind.StringLiteral && ofModules(spec.text))
             moduleUses.push({
               node,
               reason: "re-exports momentum's API, which Temporal does not provide",
@@ -353,7 +413,7 @@ export async function analyze(
             callee?.kind === SyntaxKind.Identifier &&
             callee.text === "require" &&
             first?.kind === SyntaxKind.StringLiteral &&
-            modules.includes(first.text)
+            ofModules(first.text)
           )
             moduleUses.push({ node, reason: "CommonJS require of momentum is not rewritten" });
           calls.push(node);
@@ -413,15 +473,26 @@ export async function analyze(
     }
     for (const u of unaries) ask((u as any).operand);
     for (const s of spans) ask((s as any).expression);
+    // a call of a library's callable export, such as dayjs(...)
+    for (const c of calls) {
+      const callee = skipParentheses((c as any).expression);
+      if (callee?.kind === SyntaxKind.Identifier && importedNames.has((callee as any).text)) {
+        ask(callee);
+        ask(c);
+      }
+    }
     for (const c of calls)
       for (const a of (c as any).arguments ?? []) {
+        // an empty array holds nothing, and its type can make TypeScript 7.0.2 panic (typesAt)
+        if (a.kind === SyntaxKind.ArrayLiteralExpression && (a as any).elements.length === 0)
+          continue;
         ask(a);
         askObject(a, 0);
       }
     for (const t of typeRefs) ask(t);
     for (const i of idents) ask(i);
     const list = [...queried];
-    const types = await checker.getTypeAtLocation(list);
+    const types = await typesAt(list);
     const typeOf = new Map<Node, Type | undefined>();
     list.forEach((n, i) => typeOf.set(n, types[i]));
 
@@ -503,6 +574,8 @@ export async function analyze(
           return { kind: "number", value };
         const owner = await instanceOf(type);
         if (owner) return { kind: "dynamic", type: owner };
+        if (type.flags & TypeFlags.Object && (await checker.typeToString(type)) === "Date")
+          return { kind: "dynamic", type: "date" };
         if (type.flags & (TypeFlags.Number | TypeFlags.NumberLiteral))
           return { kind: "dynamic", type: "number" };
         if (type.flags & (TypeFlags.String | TypeFlags.StringLiteral))
@@ -593,6 +666,41 @@ export async function analyze(
       const node = isCall ? parent : p;
       memberNodes.add(node);
       const args: Node[] = isCall ? [...(parent as any).arguments] : [];
+      if (owner === "Dayjs" || owner === "DayjsTimezone") {
+        // dayjs.tz.guess(): the use is the outer call, not the read of dayjs.tz
+        if (c.isStatic && name === "tz" && !isCall) continue;
+        if (isCall && name === "locale" && args.length > 0) facts.localeConfigured = true;
+        if (name === "tz" || (name === "utcOffset" && isCall && args.length > 0))
+          facts.settings.add("dayjs:zones");
+        if (name === "utc") facts.settings.add("dayjs:utc");
+        if (owner === "DayjsTimezone" && name === "setDefault")
+          facts.settings.add("dayjs.tz.setDefault");
+        if (owner === "Dayjs" && c.isStatic && name === "extend" && isCall) {
+          // which plugin: the catalog knows what some of them change in Day.js's own methods
+          const plugin = args[0] && skipParentheses(args[0]);
+          const from =
+            plugin?.kind === SyntaxKind.Identifier
+              ? importedFrom.get((plugin as any).text)
+              : undefined;
+          const known = from && /^dayjs\/plugin\/([\w-]+?)(?:\/index)?(?:\.js)?$/.exec(from);
+          facts.settings.add(`dayjs:plugin:${known ? known[1] : "?"}`);
+          // the statement goes with the imports when the whole project switches
+          const statement = parent!.parent;
+          if (statement?.kind === SyntaxKind.ExpressionStatement) {
+            file.imports.push({ node: statement, module: "dayjs" });
+            record("module", parent!, "dayjs.extend", null, [], () => ({
+              kind: "rewrite",
+              text: "",
+              differences: [],
+              precedence: "member",
+            }));
+          } else
+            record("module", parent!, "dayjs.extend", null, [], () =>
+              none("the result of dayjs.extend is used")
+            );
+          continue;
+        }
+      }
       const produces = await instanceOf(typeOf.get(node));
       const inputs: Node[] = c.isStatic ? [] : [receiver];
       for (const a of args) if (await instanceOf(typeOf.get(a))) inputs.push(a);
@@ -641,6 +749,42 @@ export async function analyze(
       });
     }
 
+    // calls of a library's callable export: dayjs(...)
+    for (const call of calls) {
+      if (call.kind !== SyntaxKind.CallExpression || memberNodes.has(call)) continue;
+      const callee = skipParentheses((call as any).expression);
+      const c = await classify(typeOf.get(callee));
+      if (!c?.isStatic || c.owner !== "Dayjs") continue;
+      memberNodes.add(call);
+      const args: Node[] = [...(call as any).arguments];
+      const argValues = await Promise.all(args.map((a) => staticOf(a, original)));
+      const inputs: Node[] = [];
+      for (const a of args) if (await instanceOf(typeOf.get(a))) inputs.push(a);
+      uses.push({
+        kind: "member",
+        file: path,
+        ...position(call),
+        subject: `${original(callee)}()`,
+        node: call,
+        produces: await instanceOf(typeOf.get(call)),
+        inputs,
+        outcomeOf: () =>
+          memberOutcome("Dayjs", true, "()", "call", {
+            recv: original(callee),
+            args: args.map((a, i) => ({ text: original(a), value: argValues[i] })),
+            facts,
+            quote: file.quote,
+          }),
+        computeOf: (r: Renderer) =>
+          memberOutcome("Dayjs", true, "()", "call", {
+            recv: original(callee),
+            args: args.map((a, i) => ({ text: r.text(a), value: rerender(argValues[i], a, r) })),
+            facts,
+            quote: file.quote,
+          }),
+      });
+    }
+
     // operators
     for (const b of binaries) {
       const op = (b as any).operatorToken.kind as number;
@@ -671,7 +815,7 @@ export async function analyze(
       )
         continue;
       const relational = relationalOperators.get(op);
-      if (relational && l === "DateTime" && r === "DateTime") {
+      if (relational && (l === "DateTime" || l === "Dayjs") && l === r) {
         record(
           "compare",
           b,
@@ -749,7 +893,11 @@ export async function analyze(
             "JSON.stringify of a momentum value",
             null,
             [],
-            passthrough(owner === "DateTime" || owner === "Duration" ? ["json-format"] : [])
+            passthrough(
+              owner === "DateTime" || owner === "Duration" || owner === "Dayjs"
+                ? ["json-format"]
+                : []
+            )
           );
         else if (printed)
           record(
@@ -851,6 +999,8 @@ export async function analyze(
         parent.kind === SyntaxKind.TypeQuery
       )
         continue;
+      // dayjs(...): a call of the export, analysed above
+      if (parent.kind === SyntaxKind.CallExpression && (parent as any).expression === i) continue;
       if (
         parent.kind === SyntaxKind.ImportSpecifier ||
         parent.kind === SyntaxKind.ImportClause ||

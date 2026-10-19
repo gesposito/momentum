@@ -9,6 +9,7 @@
 
 import { DateTime, Duration } from "../src/momentum.js";
 import type { DifferenceId } from "./differences.js";
+import { defineDayjsRules } from "./dayjs.js";
 
 export type ClassName =
   | "DateTime"
@@ -20,7 +21,9 @@ export type ClassName =
   | "IANAZone"
   | "FixedOffsetZone"
   | "SystemZone"
-  | "InvalidZone";
+  | "InvalidZone"
+  | "Dayjs"
+  | "DayjsTimezone";
 
 /** What the analyzer knows about an expression without running the program. */
 export type Static =
@@ -32,7 +35,7 @@ export type Static =
   | { kind: "object"; props: Readonly<Record<string, Arg>> }
   /** a static member of a momentum class, such as DateTime.DATE_MED */
   | { kind: "member"; owner: ClassName; name: string }
-  | { kind: "dynamic"; type: "number" | "string" | "object" | "unknown" | ClassName };
+  | { kind: "dynamic"; type: "number" | "string" | "object" | "date" | "unknown" | ClassName };
 
 export interface Arg {
   /** The source text, with nested rewrites applied. */
@@ -1216,6 +1219,18 @@ unsupported(
   "no single Temporal call does this"
 );
 
+/** What migrate/dayjs.ts registers its rules with. */
+export interface RuleKit {
+  method: typeof method;
+  staticCall: typeof staticCall;
+  unsupported: typeof unsupported;
+  rewrite: typeof rewrite;
+  none: typeof none;
+  str: typeof str;
+  temporal: typeof temporal;
+}
+defineDayjsRules({ method, staticCall, unsupported, rewrite, none, str, temporal });
+
 /** Classes without native counterparts: every use of them is "none". */
 export const classNotes: Readonly<Partial<Record<ClassName, string>>> = {
   Interval: "Temporal has no interval type; keep momentum's Interval or store two ZonedDateTimes",
@@ -1260,7 +1275,7 @@ export function memberOutcome(
 
 /** valueOf: `a - b`, `+a`, `a + 1`, `Number(a)`, `new Date(a)`, comparisons with numbers. */
 export function valueOfOutcome(owner: ClassName, recv: string, quote: '"' | "'"): Outcome {
-  if (owner === "DateTime") return rewrite(`${recv}.epochMilliseconds`);
+  if (owner === "DateTime" || owner === "Dayjs") return rewrite(`${recv}.epochMilliseconds`);
   if (owner === "Duration")
     return rewrite(`${recv}.total(${str("millisecond", quote)})`, ["duration-calendar-units"]);
   return none(classNotes[owner] ?? "no native counterpart");
@@ -1274,6 +1289,7 @@ export function toStringOutcome(owner: ClassName, recv: string, quote: '"' | "'"
       ["iso-format"]
     );
   if (owner === "Duration") return rewrite(`${recv}.toString()`, ["negative-duration-iso"]);
+  if (owner === "Dayjs") return rewrite(`new Date(${recv}.epochMilliseconds).toUTCString()`);
   return none(classNotes[owner] ?? "no native counterpart");
 }
 
@@ -1288,7 +1304,7 @@ export function compareOutcome(left: string, operator: string, right: string): O
 
 /** The Temporal type or class that replaces a momentum class, if any. */
 export function typeReplacement(owner: ClassName): string | null {
-  return owner === "DateTime"
+  return owner === "DateTime" || owner === "Dayjs"
     ? "Temporal.ZonedDateTime"
     : owner === "Duration"
       ? "Temporal.Duration"

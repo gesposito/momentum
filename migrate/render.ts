@@ -79,8 +79,9 @@ function childrenOf(node: Node): Node[] {
 }
 
 /**
- * The file with `uses` rewritten. With `whole`, the project no longer uses momentum, so its
- * imports go too (@momentum-js/momentum/polyfill becomes temporal-polyfill's global entry).
+ * The file with `uses` rewritten. With `whole`, the project no longer uses the library, so its
+ * imports go too, with dayjs.extend(plugin) (@momentum-js/momentum/polyfill becomes
+ * temporal-polyfill's global entry).
  */
 export function renderFile(file: FileInfo, uses: readonly Use[], whole: boolean): string {
   const sf = file.sourceFile;

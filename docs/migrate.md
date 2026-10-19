@@ -1,8 +1,8 @@
 # Moving from momentum to native Temporal
 
 momentum is a bridge: Luxon's API today, plain Temporal tomorrow. The migration tool tells you how
-far a project is from dropping momentum (or Luxon) and rewrites what already has a native
-replacement.
+far a project is from dropping momentum (or Luxon, or Day.js) and rewrites what already has a
+native replacement.
 
 ```sh
 npx @momentum-js/migrate check path/to/project            # would the rewrites complete the switch?
@@ -59,6 +59,44 @@ what is left.
 The new text keeps everything outside the rewritten expressions byte for byte. After writing,
 `apply` type-checks the changed files and reports any new errors.
 
+## Day.js
+
+The same tool migrates Day.js, with its utc and timezone plugins. A Day.js value becomes a
+`Temporal.ZonedDateTime` in the zone it is read in: the system zone for `dayjs()`, `"UTC"` for
+`dayjs.utc()`, the given zone for `dayjs.tz()`. Day.js computes with `Date`'s local-time setters,
+which resolve a skipped or repeated wall-clock time like Temporal's `"compatible"` disambiguation,
+so setters and the ends of units become `with(fields, { offset: "ignore" })`. When the whole
+project switches, the imports of dayjs and its plugins go, with the `dayjs.extend(...)` statements.
+
+| Day.js | Temporal | |
+| --- | --- | --- |
+| `dayjs()`, `dayjs.utc()` | `Temporal.Now.zonedDateTimeISO()`, to the millisecond | exact |
+| `dayjs(isoString)`, `dayjs(ms)`, `dayjs.unix(s)` | `Temporal.PlainDateTime.from(...)`, `Temporal.Instant.from(...)`, `Temporal.Instant.fromEpochMilliseconds(...)` | exact for literals |
+| `year()` to `millisecond()`, `get(unit)`, `daysInMonth()` | the fields (`month - 1`, `dayOfWeek % 7`) | exact |
+| `date(n)`, `hour(n)` to `millisecond(n)`, `set(unit, n)` | `.with({ ... }, { offset: "ignore" })` | exact in range |
+| `year(n)`, `month(n)`, months and years in `add` | `.with(...)`, `.add({ months })` | differ: `dayjs-dst-steps` |
+| `add(n, unit)`, `subtract(n, unit)` up to weeks | `.add({ [unit]s: n })` | exact for literals other than 0 |
+| `startOf(unit)`, `endOf(unit)` up to years | `.startOfDay()`, `.with(...)` | exact up to days; years and months differ: `dayjs-years` (weeks: none) |
+| `isBefore`, `isAfter`, `isSame` | `Temporal.ZonedDateTime.compare` | exact (`isSame` with a unit: none) |
+| `diff(other, unit)` up to hours | epoch milliseconds, divided and truncated | exact (days and longer: none) |
+| `valueOf()`, `unix()`, `toDate()`, `toISOString()`, `toJSON()`, `toString()`, `clone()` | `.epochMilliseconds`, `new Date(...)`, `.toInstant().toString(...)` | exact |
+| `format()` with `HH:mm` and a few other fixed patterns | `.toPlainTime()` or `.toPlainDate()` and `.toString(...)` | exact for times; dates differ: `dayjs-years` |
+| `utc()`, `local()`, `isDayjs(x)` | `.withTimeZone(...)`, `x instanceof Temporal.ZonedDateTime` | exact |
+| `tz(zone)`, `dayjs.tz(...)`, `dayjs.tz.guess()` | `.withTimeZone(zone)`, `Temporal.Now.timeZoneId()` | timezone plugin: `dayjs-tz` |
+
+What has no replacement: other format tokens, locales, the start of a week, `isSame` with a unit,
+`diff` in days and longer units, and what Day.js's other plugins add. In a project that uses the
+timezone plugin, values in a zone keep a fixed offset through arithmetic, so its arithmetic carries
+`dayjs-zones`. `test/momentum/migrateDayjs.test.js` checks each exact rewrite against Day.js itself.
+
+Plugins that patch the methods the tool rewrites count for the whole project. With badMutable
+nothing is rewritten, since values become mutable; with preParsePostFormat, parsing and `format`
+are left alone, and with advancedFormat, `format` patterns with `S`. devHelper's warnings go with
+the calls it watches (`dayjs(...)`, `dayjs.utc(...)`, `dayjs.unix(...)`, `diff`), which carry
+`dayjs-plugins`, as does every rewrite in a project that passes `dayjs.extend` a plugin the tool
+cannot identify. The other official plugins add inputs, units and tokens that the rewrites leave
+alone.
+
 ## Documented differences
 
 | Difference | What changes |
@@ -78,6 +116,14 @@ The new text keeps everything outside the rewritten expressions byte for byte. A
 | `link-name-equality` | equals treats link names as the same zone |
 | `negative-duration-iso` | negative durations are written -PT2H instead of PT-2H |
 | `duration-calendar-units` | durations with years, months or weeks need a reference date to be totalled |
+| `dayjs-zones` | Day.js values in a time zone keep a fixed UTC offset through arithmetic |
+| `dayjs-tz` | Day.js's timezone plugin is exact only from 1970 to 9999, away from the system zone's DST changes |
+| `dayjs-tz-parse` | dayjs.tz reads a repeated wall-clock time by the zone's current offset |
+| `dayjs-dst-steps` | around DST changes, Day.js's month and year arithmetic can move the time by an hour |
+| `dayjs-offsets` | Day.js rounds UTC offsets to 15 minutes |
+| `dayjs-years` | years before 100 or after 9999 differ |
+| `dayjs-plugins` | a Day.js plugin that patches the rewritten method stops applying |
+| `dayjs-utc-mode` | isUTC is true for any value in the UTC zone |
 
 `npx @momentum-js/migrate rules` prints each one with an example.
 
@@ -97,10 +143,22 @@ invalid DateTimes, whose checks (`isValid`) become try/catch around the place th
   calls where one would do. Run your formatter afterwards; long lines are left as they are.
 - Values that pass through code typed `any` are invisible to the type checker; the report flags
   where momentum values flow into such code, but cannot follow them further.
+- The current time (`DateTime.now()`, `dayjs()`) becomes `Temporal.Now`, which reads the system
+  clock rather than `Date`, so a test that freezes `Date` (MockDate, Jest 29's fake timers) sees
+  the real time after the rewrite. Fake timers from @sinonjs/fake-timers 15.4 on, as in Jest 30.5,
+  fake `Temporal.Now` as well, and temporal-polyfill's `Temporal.Now` reads `Date.now()`.
 
 ## How the tool is checked
 
-Besides the property tests, `test/momentum/migrate.test.js` runs the tool on the projects in
-`test/momentum/fixtures/migrate`: the report, the rewritten files against reviewed outputs, the
-type check of the result, and the values each project computes before and after. As a larger
-check, applying the exact rewrites to Luxon's own test suite leaves all 1292 tests passing.
+Besides the property tests (`test/momentum/migrateRules.test.js` against momentum,
+`test/momentum/migrateDayjs.test.js` against Day.js, which `bun run test:dayjs-zones` repeats in
+ten system zones with unusual DST rules), `test/momentum/migrate.test.js` runs the tool on the
+projects in `test/momentum/fixtures/migrate`, Day.js ones among them: the report, the rewritten
+files against reviewed outputs, the type check of the result, and the values each project computes
+before and after.
+
+As a larger check, applying the exact rewrites to Luxon's own test suite leaves all 1292 tests
+passing. Day.js's suite (1.11.23, run on Jest 29 against the published package) loads badMutable in
+a few files, which stops every rewrite in a project, so it was checked file by file: the 227
+rewrites in 9 of its 91 files leave every test passing except the few that freeze the clock with
+MockDate (2 in New York, 4 in Auckland), which `Temporal.Now` does not follow (see Limits).

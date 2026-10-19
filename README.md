@@ -106,11 +106,11 @@ A few corner cases behave differently from Luxon:
 ## Moving on to native Temporal
 
 momentum is meant to be temporary. `npx @momentum-js/migrate check <project>` (or `bunx`) finds
-every use of momentum (or Luxon) with TypeScript's type checker and reports whether the rewrites
-with a native Temporal replacement complete the switch, listing what is left when they don't;
-`npx @momentum-js/migrate apply <project>` writes them. Rewrites are applied by default only when
-they are exact, proven against momentum by property tests; those that differ in documented corner
-cases wait for `--accept`. See [docs/migrate.md](docs/migrate.md).
+every use of momentum (or Luxon, or Day.js) with TypeScript's type checker and reports whether
+the rewrites with a native Temporal replacement complete the switch, listing what is left when
+they don't; `npx @momentum-js/migrate apply <project>` writes them. Rewrites are applied by
+default only when they are exact, proven against the library by property tests; those that
+differ in documented corner cases wait for `--accept`. See [docs/migrate.md](docs/migrate.md).
 
 ## Opting out of the Temporal-native core
 

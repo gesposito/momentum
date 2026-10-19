@@ -12,6 +12,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -36,7 +37,11 @@ function copy(name, { tsconfig = true } = {}) {
           strict: true,
           noEmit: true,
           skipLibCheck: true,
-          paths: { "@momentum-js/momentum": [join(repo, "src/momentum.ts")] },
+          paths: {
+            "@momentum-js/momentum": [join(repo, "src/momentum.ts")],
+            dayjs: [join(repo, "node_modules/dayjs")],
+            "dayjs/*": [join(repo, "node_modules/dayjs/*")],
+          },
         },
         include: ["src"],
       })
@@ -57,6 +62,8 @@ function copy(name, { tsconfig = true } = {}) {
       join(dir, "node_modules/@momentum-js/momentum/index.ts"),
       `export * from ${JSON.stringify(join(repo, "src/momentum.ts"))};\n`
     );
+    // and Day.js, as installed
+    symlinkSync(join(repo, "node_modules/dayjs"), join(dir, "node_modules/dayjs"));
   }
   return dir;
 }
@@ -206,6 +213,52 @@ test(
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("DateTime#plus(): `.add(duration)`");
     expect(result.stdout).toContain("repeated-wall-time: calendar arithmetic");
+  },
+  timeout
+);
+
+describe("a Day.js project", () => {
+  test(
+    "switches completely: the rewrites, dayjs and its plugins gone, the same values",
+    () => {
+      const dir = copy("dayjs");
+      try {
+        const r = report(dir);
+        expect(r.status).toBe(0);
+        expect(r.fullSwitch).toBe(true);
+        expect(r.counts).toEqual({ uses: 17, exact: 17, accepted: 0, pending: 0, leftOff: 0 });
+        const before = exportsOf(dir, "src/app.ts");
+        const result = cli("apply", dir);
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+        expect(readFileSync(join(dir, "src/app.ts"), "utf8")).toBe(expected("dayjs", "app.ts"));
+        expect(run("bun", ["check", "-p", dir, "--no-pretty"]).status).toBe(0);
+        expect(exportsOf(dir, "src/app.ts")).toEqual(before);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    timeout
+  );
+});
+
+test(
+  "a JavaScript Day.js project: `typeof dayjs` is Day.js, and its Duration is not momentum's",
+  () => {
+    const dir = copy("dayjs-javascript", { tsconfig: false });
+    try {
+      const r = report(dir);
+      expect(r.inferredTypes).toBe(true);
+      expect(r.counts).toEqual({ uses: 8, exact: 7, accepted: 0, pending: 0, leftOff: 1 });
+      expect(r.uses.filter((u) => u.subject === "dayjs()")).toHaveLength(2);
+      // the duration plugin's Duration is Day.js's, not momentum's
+      expect(r.uses.filter((u) => u.replacement === null).map((u) => u.subject)).toEqual([
+        "Dayjs.duration",
+      ]);
+      expect(r.uses.some((u) => u.subject.startsWith("Duration"))).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   },
   timeout
 );
