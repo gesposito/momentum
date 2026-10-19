@@ -36,25 +36,25 @@ function copy(name, { tsconfig = true } = {}) {
           strict: true,
           noEmit: true,
           skipLibCheck: true,
-          paths: { momentum: [join(repo, "src/momentum.ts")] },
+          paths: { "@momentum-js/momentum": [join(repo, "src/momentum.ts")] },
         },
         include: ["src"],
       })
     );
   else {
     // momentum installed as a package, as a JavaScript project would have it
-    mkdirSync(join(dir, "node_modules/momentum"), { recursive: true });
+    mkdirSync(join(dir, "node_modules/@momentum-js/momentum"), { recursive: true });
     writeFileSync(
-      join(dir, "node_modules/momentum/package.json"),
+      join(dir, "node_modules/@momentum-js/momentum/package.json"),
       JSON.stringify({
-        name: "momentum",
+        name: "@momentum-js/momentum",
         type: "module",
         exports: { ".": "./index.ts" },
         types: "./index.ts",
       })
     );
     writeFileSync(
-      join(dir, "node_modules/momentum/index.ts"),
+      join(dir, "node_modules/@momentum-js/momentum/index.ts"),
       `export * from ${JSON.stringify(join(repo, "src/momentum.ts"))};\n`
     );
   }

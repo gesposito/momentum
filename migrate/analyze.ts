@@ -31,7 +31,7 @@ import {
   type Static,
 } from "./rules.js";
 
-export const defaultModules = ["momentum", "momentum/polyfill", "luxon"];
+export const defaultModules = ["@momentum-js/momentum", "@momentum-js/momentum/polyfill", "luxon"];
 
 const classNames: ReadonlySet<string> = new Set<ClassName>([
   "DateTime",

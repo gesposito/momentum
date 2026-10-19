@@ -1,7 +1,7 @@
 /*
   Every access to the Temporal API goes through this module. It resolves `globalThis.Temporal`
   lazily, so importing momentum never touches globals and a polyfill may be installed before the
-  first call (see `momentum/polyfill`).
+  first call (see `@momentum-js/momentum/polyfill`).
 
   Temporal is the authority for the calendar and for everything that depends on the time zone
   database. A DateTime reads its calendar fields and UTC offset from the Temporal.ZonedDateTime of

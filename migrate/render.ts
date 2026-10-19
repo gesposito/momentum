@@ -80,7 +80,7 @@ function childrenOf(node: Node): Node[] {
 
 /**
  * The file with `uses` rewritten. With `whole`, the project no longer uses momentum, so its
- * imports go too (momentum/polyfill becomes temporal-polyfill's global entry).
+ * imports go too (@momentum-js/momentum/polyfill becomes temporal-polyfill's global entry).
  */
 export function renderFile(file: FileInfo, uses: readonly Use[], whole: boolean): string {
   const sf = file.sourceFile;
@@ -99,7 +99,7 @@ export function renderFile(file: FileInfo, uses: readonly Use[], whole: boolean)
     for (const i of file.imports)
       replaced.set(
         i.node,
-        i.module === "momentum/polyfill" ? 'import "temporal-polyfill/global";' : ""
+        i.module === "@momentum-js/momentum/polyfill" ? 'import "temporal-polyfill/global";' : ""
       );
   if (primary.size === 0 && wrappers.size === 0 && replaced.size === 0) return text;
 

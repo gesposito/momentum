@@ -1,4 +1,4 @@
-import { DateTime, Duration } from "momentum";
+import { DateTime, Duration } from "@momentum-js/momentum";
 
 const ROME = "Europe/Rome";
 

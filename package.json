@@ -1,5 +1,5 @@
 {
-  "name": "momentum",
+  "name": "@momentum-js/momentum",
   "version": "0.1.0",
   "description": "Luxon-compatible immutable dates, durations and intervals, powered by Temporal",
   "keywords": [
@@ -10,7 +10,14 @@
     "immutable",
     "timezone"
   ],
+  "homepage": "https://github.com/gesposito/momentum#readme",
+  "bugs": "https://github.com/gesposito/momentum/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gesposito/momentum.git"
+  },
   "license": "MIT",
+  "author": "Gianluca Esposito <g@esposi.to>",
   "type": "module",
   "sideEffects": [
     "./src/polyfill.ts",
@@ -37,6 +44,9 @@
   ],
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "bun run build:js && bun run build:types",

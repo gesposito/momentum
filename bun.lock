@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "momentum",
+      "name": "@momentum-js/momentum",
       "dependencies": {
         "temporal-spec": "^1.0.1",
       },

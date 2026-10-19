@@ -45,10 +45,11 @@ the opt-out resolves times with Luxon's algorithm.
 
 When every use converts, `apply` rewrites the whole project: each use, each `DateTime` and
 `Duration` annotation (which become `Temporal.ZonedDateTime` and `Temporal.Duration`), and the
-imports, which disappear (`momentum/polyfill` becomes `temporal-polyfill/global`). Otherwise it
-rewrites only self-contained expressions, which start from a momentum factory and end in a plain
-value, such as `DateTime.fromMillis(ms).setZone("Asia/Tokyo").hour`. No momentum value outlives
-them, so the rest of the program is untouched. Run `check` again afterwards to see what is left.
+imports, which disappear (`@momentum-js/momentum/polyfill` becomes `temporal-polyfill/global`).
+Otherwise it rewrites only self-contained expressions, which start from a momentum factory and
+end in a plain value, such as `DateTime.fromMillis(ms).setZone("Asia/Tokyo").hour`. No momentum
+value outlives them, so the rest of the program is untouched. Run `check` again afterwards to see
+what is left.
 
 The new text keeps everything outside the rewritten expressions byte for byte. After writing,
 `apply` type-checks the changed files and reports any new errors.
@@ -84,8 +85,8 @@ invalid DateTimes, whose checks (`isValid`) become try/catch around the place th
 
 ## Limits
 
-- CommonJS `require("momentum")` and JSDoc type references in JavaScript files are reported but
-  not rewritten.
+- CommonJS `require("@momentum-js/momentum")` and JSDoc type references in JavaScript files are
+  reported but not rewritten.
 - Partial rewrites cover self-contained expressions only, not yet values kept in local variables.
 - Rewrites are exact, not minimal: `DateTime.fromMillis(ms).setZone(zone)` becomes two Temporal
   calls where one would do. Run your formatter afterwards; long lines are left as they are.

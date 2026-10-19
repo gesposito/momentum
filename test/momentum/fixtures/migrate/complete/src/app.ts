@@ -1,4 +1,4 @@
-import { DateTime } from "momentum";
+import { DateTime } from "@momentum-js/momentum";
 import { firstMeeting, nextMeeting, slot } from "./dates";
 
 const first = firstMeeting();

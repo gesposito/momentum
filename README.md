@@ -3,7 +3,7 @@
 Luxon's API, running on [Temporal](https://tc39.es/proposal-temporal/).
 
 ```js
-import { DateTime } from "momentum";
+import { DateTime } from "@momentum-js/momentum";
 
 DateTime.now().setZone("America/New_York").minus({ weeks: 1 }).endOf("day").toISO();
 ```
@@ -31,23 +31,23 @@ migration steps.
 ## Install
 
 ```sh
-bun add momentum
+bun add @momentum-js/momentum
 ```
 
 Temporal is available natively in Node.js 26 (enabled by default since 26.0.0; builds against the
 system ICU, such as Homebrew's, gained it in 26.12.0), in Bun and in recent browsers. On older
-runtimes install the polyfill and import the `momentum/polyfill` entry point, which installs
-`temporal-polyfill` on the global object and re-exports the library:
+runtimes install the polyfill and import the `@momentum-js/momentum/polyfill` entry point, which
+installs `temporal-polyfill` on the global object and re-exports the library:
 
 ```sh
 bun add temporal-polyfill
 ```
 
 ```js
-import { DateTime } from "momentum/polyfill";
+import { DateTime } from "@momentum-js/momentum/polyfill";
 ```
 
-Using `momentum` without a `Temporal` global throws a `TemporalUnavailableError` on first use. The
+Using momentum without a `Temporal` global throws a `TemporalUnavailableError` on first use. The
 error class is exported, so it can be caught by type.
 
 ## What is the same
@@ -115,7 +115,7 @@ property tests; those that differ in documented corner cases wait for `--accept`
 ## Opting out of the Temporal-native core
 
 ```js
-import { Settings } from "momentum";
+import { Settings } from "@momentum-js/momentum";
 
 Settings.temporalNative = false;
 ```
@@ -168,7 +168,7 @@ with both cores, is 82.5 kB (25.9 kB gzipped) against Luxon's 79.8 kB (24.1 kB g
 ## Package shape
 
 - ESM only, `"sideEffects"` declared so bundlers can drop unused modules; the main entry never
-  touches globals, only `momentum/polyfill` does.
+  touches globals, only `@momentum-js/momentum/polyfill` does.
 - `build/momentum.js` (readable), `build/momentum.min.js` (minified) and `build/types/*.d.ts`.
 - Node.js 20+, Bun 1.1+, evergreen browsers.
 
