@@ -22,7 +22,7 @@
         "moment": "2.29.2",
         "moment-timezone": "0.5.31",
         "temporal-polyfill": "^1.0.6",
-        "typescript": "^7.0.2",
+        "typescript": "~7.0.2",
       },
       "peerDependencies": {
         "temporal-polyfill": "^1.0.0",
