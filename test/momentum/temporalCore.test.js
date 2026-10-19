@@ -1,5 +1,7 @@
 /* global test expect describe */
 import { DateTime, Settings, Zone } from "../../src/momentum";
+import { resolveWallClock } from "../../src/impl/temporal";
+import { anyInstant, fc, fieldsAt, wallClockNearTransition } from "./fastCheck.js";
 
 // The DateTime core on Temporal: wall-clock resolution through PlainDateTime#toZonedDateTime,
 // getPossibleOffsets, calendar arithmetic and week fields from Temporal.PlainDate, the lazily
@@ -166,7 +168,10 @@ describe("wall-clock resolution", () => {
     expect(guam.set({ year: 1850 }).toISO()).toBe("1850-05-31T09:39:00.000+09:39");
   });
 
-  test("agrees with Temporal's own disambiguation around random transitions", () => {
+  test("agrees with Temporal's own disambiguation around transitions", () => {
+    // Luxon's rules in Temporal's terms: a skipped wall clock moves forward ("later"), and an
+    // ambiguous one takes its later instant only when the zone's offset now (fromObject's guess)
+    // is that instant's offset
     const zones = [
       "America/New_York",
       "Australia/Lord_Howe",
@@ -179,57 +184,157 @@ describe("wall-clock resolution", () => {
       "America/Caracas",
       "Europe/Moscow",
     ];
-    let seed = 7;
-    const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 200; i++) {
-      const zone = zones[Math.floor(random() * zones.length)],
-        start = T.ZonedDateTime.from({
-          year: 1880 + Math.floor(random() * 160),
-          month: 1 + Math.floor(random() * 12),
-          day: 1,
-          timeZone: zone,
-        }),
-        transition = start.getTimeZoneTransition("next");
-      if (transition === null) continue;
-      const near = transition.add({ minutes: Math.floor(random() * 240) - 120 }),
-        fields = {
-          year: near.year,
-          month: near.month,
-          day: near.day,
-          hour: near.hour,
-          minute: near.minute,
-        },
-        now = Date.UTC(1850 + Math.floor(random() * 200), Math.floor(random() * 12), 1),
-        dt = withNow(now, () => DateTime.fromObject(fields, { zone })),
-        earlier = T.ZonedDateTime.from({ ...fields, timeZone: zone }, { disambiguation: "earlier" }),
-        later = T.ZonedDateTime.from({ ...fields, timeZone: zone }, { disambiguation: "later" }),
-        guess = T.Instant.fromEpochMilliseconds(now).toZonedDateTimeISO(zone).offsetNanoseconds,
-        skipped = T.PlainDateTime.compare(earlier.toPlainDateTime(), T.PlainDateTime.from(fields)) !== 0,
-        expected = skipped
-          ? later
-          : earlier.epochMilliseconds !== later.epochMilliseconds && later.offsetNanoseconds === guess
-            ? later
-            : earlier,
-        view = T.Instant.fromEpochMilliseconds(dt.toMillis()).toZonedDateTimeISO(zone);
+    const samples = fc.constantFrom(...zones).chain((zone) =>
+      fc.record({
+        zone: fc.constant(zone),
+        fields: wallClockNearTransition(zone),
+        now: fc
+          .integer({ min: Date.UTC(1850, 0, 1) / 86400000, max: Date.UTC(2050, 0, 1) / 86400000 })
+          .map((days) => days * 86400000),
+      })
+    );
+    fc.assert(
+      fc.property(samples, ({ zone, fields, now }) => {
+        const dt = withNow(now, () => DateTime.fromObject(fields, { zone })),
+          bag = { ...fields, timeZone: zone },
+          earlier = T.ZonedDateTime.from(bag, { disambiguation: "earlier" }),
+          later = T.ZonedDateTime.from(bag, { disambiguation: "later" }),
+          guess = T.Instant.fromEpochMilliseconds(now).toZonedDateTimeISO(zone).offsetNanoseconds,
+          skipped =
+            T.PlainDateTime.compare(earlier.toPlainDateTime(), T.PlainDateTime.from(fields)) !== 0,
+          ambiguous = earlier.epochMilliseconds !== later.epochMilliseconds,
+          expected = skipped || (ambiguous && later.offsetNanoseconds === guess) ? later : earlier,
+          view = T.Instant.fromEpochMilliseconds(dt.toMillis()).toZonedDateTimeISO(zone);
+        expect([dt.toMillis(), dt.wasHole]).toEqual([expected.epochMilliseconds, skipped]);
+        expect([dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.offset]).toEqual([
+          view.year,
+          view.month,
+          view.day,
+          view.hour,
+          view.minute,
+          view.offsetNanoseconds / 60e9,
+        ]);
+      })
+    );
+  });
 
-      expect({ zone, fields, now, ms: dt.toMillis(), hole: dt.wasHole }).toEqual({
-        zone,
-        fields,
-        now,
-        ms: expected.epochMilliseconds,
-        hole: skipped,
-      });
-      expect([dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.offset]).toEqual([
-        view.year,
-        view.month,
-        view.day,
-        view.hour,
-        view.minute,
-        view.offsetNanoseconds / 60e9,
-      ]);
-    }
+  test("resolveWallClock matches ZonedDateTime.from with a preferred offset", () => {
+    // ZonedDateTime.from({ ...fields, offset: guess }, { offset: "prefer" }) is the rule that
+    // resolveWallClock implements more cheaply, so Temporal itself is the reference: the same
+    // instant and offset, or a RangeError from both
+    const zones = [
+      "America/New_York",
+      "Europe/London",
+      "Europe/Dublin",
+      "Australia/Lord_Howe",
+      "Pacific/Apia",
+      "Pacific/Kiritimati",
+      "America/Nuuk",
+      "Africa/Casablanca",
+      "Asia/Kathmandu",
+      "Pacific/Chatham",
+      "Europe/Moscow",
+      "Antarctica/Troll",
+      "America/Sao_Paulo",
+      "Asia/Tehran",
+      "America/St_Johns",
+      "Asia/Manila",
+      "Pacific/Guam",
+      "+05:30",
+      "-09:30",
+      "UTC",
+    ];
+    // the first and last two days of Temporal's range
+    const edgeDay = (year, month, days) =>
+      fc
+        .tuple(fc.constantFrom(...days), fc.integer({ min: 0, max: 1439 }))
+        .map(([day, minutes]) => ({
+          year,
+          month,
+          day,
+          hour: Math.floor(minutes / 60),
+          minute: minutes % 60,
+          second: 0,
+          millisecond: 0,
+        }));
+    const edgeDays = fc.oneof(edgeDay(-271821, 4, [19, 20]), edgeDay(275760, 9, [12, 13]));
+    const samples = fc.constantFrom(...zones).chain((zone) =>
+      fc.record({
+        zone: fc.constant(zone),
+        fields: fc.oneof(
+          { arbitrary: wallClockNearTransition(zone), weight: 6 },
+          { arbitrary: anyInstant.map((ts) => fieldsAt(ts, zone)), weight: 3 },
+          { arbitrary: edgeDays, weight: 1 }
+        ),
+        guess: fc.oneof(
+          fc.constant(undefined),
+          // an offset the zone really has within two months of that wall clock
+          fc.integer({ min: -60, max: 60 }).map((days) => ({ days })),
+          fc.integer({ min: -900, max: 900 }),
+          fc.constantFrom(49.93333333333333, -296.03333333333336, 1500, -1440, NaN)
+        ),
+      })
+    );
+    fc.assert(
+      fc.property(samples, ({ zone, fields, guess }) => {
+        const offsetGuess =
+            typeof guess === "object" ? offsetNear(fields, zone, guess.days) : guess,
+          expected = attempt(() => preferredOffset(fields, zone, offsetGuess)),
+          actual = attempt(() => resolveWallClock(fields, zone, offsetGuess));
+        if (expected instanceof Error || actual instanceof Error) {
+          expect([actual.name, expected.name]).toEqual(["RangeError", "RangeError"]);
+        } else {
+          expect([actual.ts, actual.o]).toEqual([
+            expected.epochMilliseconds,
+            expected.offsetNanoseconds / 60e9,
+          ]);
+        }
+      })
+    );
   });
 });
+
+function attempt(f) {
+  try {
+    return f();
+  } catch (e) {
+    return e;
+  }
+}
+
+// the offset a zone has a number of days away from a wall clock (0 when that is out of range)
+function offsetNear(fields, zone, days) {
+  try {
+    const zdt = T.PlainDateTime.from(fields).toZonedDateTime(zone);
+    return zdt.add({ days }).offsetNanoseconds / 60e9;
+  } catch {
+    return 0;
+  }
+}
+
+// minutes, possibly fractional, as a UTC offset string with up to second precision
+function offsetString(minutes) {
+  const seconds = Math.round(Math.abs(minutes) * 60),
+    pad = (n) => String(n).padStart(2, "0"),
+    sign = minutes < 0 ? "-" : "+",
+    hhmm = `${sign}${pad(Math.floor(seconds / 3600))}:${pad(Math.floor(seconds / 60) % 60)}`;
+  return seconds % 60 === 0 ? hhmm : `${hhmm}:${pad(seconds % 60)}`;
+}
+
+// the reference resolution: Temporal's own, with the guess as a preferred offset
+function preferredOffset(fields, timeZone, guess) {
+  const offset = Number.isFinite(guess) && Math.abs(guess) < 1440 ? offsetString(guess) : undefined;
+  try {
+    return T.ZonedDateTime.from(
+      { ...fields, timeZone, offset },
+      { offset: "prefer", disambiguation: "compatible", overflow: "reject" }
+    );
+  } catch (e) {
+    // ZonedDateTime.from rejects the first day of Temporal's range whenever an offset is given
+    if (e?.name !== "RangeError") throw e;
+    return T.PlainDateTime.from(fields).toZonedDateTime(timeZone);
+  }
+}
 
 describe("getPossibleOffsets", () => {
   test("lists both instants of an ambiguous wall clock, earlier first", () => {

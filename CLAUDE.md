@@ -27,5 +27,6 @@ shows the migration steps) and migrates it one verified step at a time.
 - Temporal reports unrepresentable values with `RangeError`; swallow those (invalid DateTime) and rethrow anything else (`isRangeError`).
 - `test/` is vendored from luxon except `test/setupTests.js`, `test/bun-known-failures.txt`, `test/parity/*` and `test/momentum/*`. Don't hand-edit vendored files; change `scripts/sync-tests.ts` instead.
 - New tests go in `test/parity/` when they pin luxon behaviour that luxon's own suite doesn't check (take every expectation from luxon 3.7.2, the `luxon` devDependency), and in `test/momentum/` when they cover what momentum adds (Temporal interop, polyfill entry, offset cache, API-surface snapshot).
+- Randomized tests are fast-check properties built on `test/momentum/fastCheck.js` (shared configuration and generators: instants, wall clocks near transitions); never `Math.random`. `FC_NUM_RUNS=20000` fuzzes longer; a failure prints `{ seed, path }`, replayed with `FC_SEED`/`FC_PATH`.
 - Adding or removing a public member requires updating the API snapshot deliberately (`bunx jest test/momentum/apiSurface.test.js -u`).
 - Public JSDoc comes from luxon; keep it when touching public methods, it ends up in the `.d.ts` files.

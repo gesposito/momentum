@@ -1,5 +1,6 @@
 /* global test expect describe */
 import { DateTime, IANAZone, Settings } from "../../src/momentum";
+import { anyInstant, fc, nearTransition } from "./fastCheck.js";
 
 // Offsets are served from cached transition windows; they must agree with Temporal exactly,
 // including right at, just before and just after every transition.
@@ -8,19 +9,10 @@ const T = globalThis.Temporal;
 const directOffset = (zone, ts) =>
   T.Instant.fromEpochMilliseconds(ts).toZonedDateTimeISO(zone).offsetNanoseconds / 60000000000;
 
-// a seeded generator (mulberry32), so that a failure reproduces
-function generator(seed) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), seed | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function probes(zone) {
-  const random = generator(20171105),
-    result = [];
+// every transition of a zone between 1995 and 2030: the instants right at, just before and just
+// after it, and an hour either side
+function transitionProbes(zone) {
+  const result = [];
   let current = T.Instant.fromEpochMilliseconds(Date.UTC(1995, 0, 1)).toZonedDateTimeISO(zone);
   for (let i = 0; i < 200; i++) {
     const next = current.getTimeZoneTransition("next");
@@ -29,26 +21,43 @@ function probes(zone) {
     result.push(t - 1, t, t + 1, t - 3600000, t + 3600000);
     current = next;
   }
-  for (let i = 0; i < 300; i++) {
-    result.push(Math.trunc((random() * 2 - 1) * 4e12));
-  }
-  // out of order, so cached windows get reused and evicted
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
   return result;
 }
 
+const zones = ["America/New_York", "Europe/Rome", "Australia/Lord_Howe", "Pacific/Apia"];
+
 describe("cached offsets", () => {
-  for (const zone of ["America/New_York", "Europe/Rome", "Australia/Lord_Howe", "Pacific/Apia"]) {
+  for (const zone of zones) {
     test(`agree with Temporal around every transition of ${zone}`, () => {
+      Settings.resetCaches();
       const iana = IANAZone.create(zone);
-      for (const ts of probes(zone)) {
+      for (const ts of transitionProbes(zone)) {
         expect(iana.offset(ts)).toBe(directOffset(zone, ts));
       }
     });
   }
+
+  test("agree with Temporal for any instants, queried in any order", () => {
+    // the cache keeps a few windows per zone and evicts the least recently used one, so no
+    // sequence of queries may change an answer; each run starts from an empty cache
+    const zoneAndInstants = fc
+      .constantFrom(...zones, "Asia/Manila", "Pacific/Guam", "Europe/London", "Asia/Kathmandu")
+      .chain((zone) =>
+        fc.tuple(
+          fc.constant(zone),
+          fc.array(fc.oneof(nearTransition(zone), anyInstant), { minLength: 1, maxLength: 30 })
+        )
+      );
+    fc.assert(
+      fc.property(zoneAndInstants, ([zone, instants]) => {
+        Settings.resetCaches();
+        const iana = IANAZone.create(zone);
+        for (const ts of instants) {
+          expect(iana.offset(ts)).toBe(directOffset(zone, ts));
+        }
+      })
+    );
+  });
 
   test("include historical local mean time with sub-minute precision", () => {
     // 1800-01-01 in Rome: LMT +00:49:56

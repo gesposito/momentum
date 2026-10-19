@@ -151,6 +151,16 @@ it is never edited by hand. `test/parity/` checks Luxon behaviour that its suite
 with every expectation taken from Luxon 3.7.2. `test/momentum/` covers what momentum adds: the
 Temporal interop, the polyfill entry point, the offset cache and the API-surface snapshot.
 
+Randomized checks are [fast-check](https://fast-check.dev) properties, so a failure shrinks to a
+minimal counterexample and prints the seed and path that replay it. Each property runs 100 times
+by default; `FC_NUM_RUNS` raises that for a longer fuzzing session, and `FC_SEED` with `FC_PATH`
+replays a reported failure:
+
+```sh
+FC_NUM_RUNS=20000 bun run jest test/momentum
+FC_SEED=-1819918769 FC_PATH="12:3" bun run jest -t "name of the test"
+```
+
 `mise.toml` pins Node 26 and Bun 1.4, so with [mise](https://mise.jdx.dev) the tests run on Node's
 native Temporal. `bun run test` is the reference run. `bun run test:bun` compares its failures with
 `test/bun-known-failures.txt`, the tests that fail only because of Bun's engine: three on every
