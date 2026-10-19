@@ -159,11 +159,15 @@ reading a few fields takes about 10 µs with the Temporal-native core and under 
 opt-out, which the transition-window cache keeps within a few percent of native. Runtimes that
 need the polyfill are better served by the opt-out.
 
-Memory: until its fields are read, a DateTime retains about 610 bytes with the Temporal-native
-core; with the opt-out it retains about 700, like Luxon's 680–690. After touching 100 zones,
-momentum's offset windows retain 13–100 kB, where Luxon's per-zone `Intl.DateTimeFormat` cache
-costs 5.9 MB of ICU memory on Bun and 5.3 MB of resident memory on Node. The minified bundle,
-with both cores, is 82.5 kB (25.9 kB gzipped) against Luxon's 79.8 kB (24.1 kB gzipped).
+Footprint, from `bun run benchmark:memory` (Bun 1.4.3) and `bun run benchmark:memory:node`
+(Node 26.12):
+
+| | momentum | Luxon 3.7 |
+| --- | --- | --- |
+| Bundle, minified, both cores | 82.5 kB, 25.9 kB gzipped | 79.8 kB, 24.1 kB gzipped |
+| npm package, unpacked | 1.8 MB, with sources and source maps | 4.6 MB |
+| A DateTime until its fields are read | about 610 bytes, 690 with the opt-out | 680–690 bytes |
+| Zone caches after touching 100 zones | 13–100 kB of offset windows | 5.9 MB of ICU memory on Bun, 5.3 MB resident on Node, for its per-zone `Intl.DateTimeFormat` |
 
 ## Package shape
 
