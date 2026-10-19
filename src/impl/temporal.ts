@@ -91,9 +91,10 @@ function offsetString(minutes: number): string {
 
 /**
  * Zoned view of an epoch millisecond timestamp (fractions are truncated). Throws a RangeError for
- * timestamps outside the representable range or for unknown time zone identifiers. The
- * constructor is about a quarter cheaper than Instant#toZonedDateTimeISO() on Bun and on
- * temporal-polyfill, and it only accepts time zone identifiers, not ISO strings that carry one.
+ * timestamps outside the representable range or for unknown time zone identifiers. Reading the
+ * fields of a ZonedDateTime built with the constructor is about a quarter cheaper on Bun and on
+ * temporal-polyfill than through Instant#toZonedDateTimeISO(), and the constructor only accepts
+ * time zone identifiers, not ISO strings that carry one.
  */
 export function zonedDateTime(ts: number, timeZone: string): ZonedDateTime {
   return new (temporal().ZonedDateTime)(BigInt(Math.trunc(ts)) * 1_000_000n, timeZone);

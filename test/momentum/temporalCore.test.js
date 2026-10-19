@@ -1,8 +1,10 @@
 /* global test expect describe */
 import { DateTime, Settings, Zone } from "../../src/momentum";
 
-// The DateTime core on Temporal: wall-clock resolution through Temporal.ZonedDateTime.from, the
-// fallback for custom zones, and the cases where it deliberately differs from Luxon's algorithm.
+// The DateTime core on Temporal: wall-clock resolution through Temporal.ZonedDateTime.from,
+// getPossibleOffsets, calendar arithmetic and week fields from Temporal.PlainDate, the lazily
+// derived state, the fallback for custom zones, and the cases where Temporal deliberately differs
+// from Luxon's algorithm.
 
 const T = globalThis.Temporal;
 
