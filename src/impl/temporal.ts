@@ -5,7 +5,7 @@
 
   Temporal is the authority for the calendar and for everything that depends on the time zone
   database. A DateTime reads its calendar fields and UTC offset from the Temporal.ZonedDateTime of
-  its instant in its zone, turns wall-clock times into instants with ZonedDateTime.from
+  its instant in its zone, turns wall-clock times into instants with PlainDateTime#toZonedDateTime
   (resolveWallClock) and takes calendar arithmetic and week data from Temporal.PlainDate.
   Zone#offset() (IANAZone, SystemZone) is answered from transition windows cached here.
 */
@@ -73,20 +73,6 @@ export function offsetTimeZoneId(minutes: number): string | null {
   if (!Number.isInteger(minutes) || Math.abs(minutes) >= 1440) return null;
   const abs = Math.abs(minutes);
   return `${minutes < 0 ? "-" : "+"}${pad2(Math.floor(abs / 60))}:${pad2(abs % 60)}`;
-}
-
-/**
- * Formats an offset in (possibly fractional) minutes as a UTC offset string with up to second
- * precision, as ZonedDateTime.from accepts it: `-240` -> `"-04:00"`, `49.9333` -> `"+00:49:56"`.
- */
-function offsetString(minutes: number): string {
-  const sign = minutes < 0 ? "-" : "+",
-    totalSeconds = Math.round(Math.abs(minutes) * 60),
-    hours = Math.floor(totalSeconds / 3600),
-    mins = Math.floor((totalSeconds % 3600) / 60),
-    secs = totalSeconds % 60,
-    base = `${sign}${pad2(hours)}:${pad2(mins)}`;
-  return secs === 0 ? base : `${base}:${pad2(secs)}`;
 }
 
 /**
@@ -166,18 +152,15 @@ export function plainDate(year: number, month: number, day: number): PlainDate {
 // WALL-CLOCK RESOLUTION
 
 export interface ResolvedWallClock {
-  zdt: ZonedDateTime;
-  /** the wall clock of `zdt`, which differs from the requested one when that one was skipped */
+  /** epoch milliseconds of the resolved instant */
+  ts: number;
+  /** its UTC offset in minutes */
+  o: number;
+  /** its wall clock, which differs from the requested one when that one was skipped */
   fields: GregorianDateTime;
   /** whether the requested wall clock fell into a gap and was moved forward */
   wasHole: boolean;
 }
-
-const resolveOptions = {
-  offset: "prefer",
-  disambiguation: "compatible",
-  overflow: "reject",
-} as const;
 
 /**
  * The instant of a wall-clock time in a Temporal time zone, resolved the way Luxon does it:
@@ -197,13 +180,7 @@ export function resolveWallClock(
   timeZone: string,
   offsetGuess?: number
 ): ResolvedWallClock {
-  const T = temporal(),
-    offset =
-      offsetGuess !== undefined && Number.isFinite(offsetGuess) && Math.abs(offsetGuess) < 1440
-        ? offsetString(offsetGuess)
-        : undefined;
-  // the property bag doubles as the requested wall clock
-  let requested: GregorianDateTime & { timeZone: string; offset: string | undefined } = {
+  let requested: GregorianDateTime = {
       year: Math.trunc(fields.year),
       month: Math.trunc(fields.month),
       day: Math.trunc(fields.day),
@@ -211,30 +188,55 @@ export function resolveWallClock(
       minute: Math.trunc(fields.minute),
       second: Math.trunc(fields.second),
       millisecond: Math.trunc(fields.millisecond),
-      timeZone,
-      offset,
     },
-    zdt: ZonedDateTime;
+    pdt: PlainDateTime;
   try {
-    zdt = T.ZonedDateTime.from(requested, resolveOptions);
+    pdt = plainDateTime(requested);
   } catch (e) {
     if (!isRangeError(e)) throw e;
-    requested = { ...rollOver(requested), timeZone, offset };
-    try {
-      zdt = T.ZonedDateTime.from(requested, resolveOptions);
-    } catch (e) {
-      if (!isRangeError(e)) throw e;
-      // ZonedDateTime.from rejects wall clocks on the first day of Temporal's range, which zones
-      // west of UTC reach, when an offset is given (temporal-polyfill always does), while
-      // PlainDateTime#toZonedDateTime accepts them; no time is ambiguous that far back
-      const { year, month, day, hour, minute, second, millisecond } = requested;
-      zdt = new T.PlainDateTime(year, month, day, hour, minute, second, millisecond).toZonedDateTime(
-        timeZone
-      );
+    requested = rollOver(requested);
+    pdt = plainDateTime(requested);
+  }
+  // "compatible" disambiguation: the earlier instant of an ambiguous time, and a skipped time
+  // moved forward by the length of the gap
+  const zdt = pdt.toZonedDateTime(timeZone),
+    ts = zdt.epochMilliseconds,
+    o = offsetMinutes(zdt);
+  // The later instant of an ambiguous time has the smaller offset, so only a smaller guess can
+  // pick it, and it does when the zone really has that offset at the instant the guess implies.
+  // That is what ZonedDateTime.from's offset: "prefer" decides; asking the zone's cached offsets
+  // (offsetAt) first keeps a guess taken in another season cheap. The cache only shortlists the
+  // candidate: a conversion with "later" disambiguation confirms it, so that a wrong cached
+  // window (temporal-polyfill misses a few historical transitions) can never pick an instant.
+  if (offsetGuess !== undefined && offsetGuess < o) {
+    const later = ts + Math.round((o - offsetGuess) * 60) * 1000;
+    // an instant beyond the end of Temporal's range is no candidate
+    if (
+      isRepresentableTs(later) &&
+      offsetAt(timeZone, later) === offsetGuess &&
+      pdt.toZonedDateTime(timeZone, { disambiguation: "later" }).epochMilliseconds === later
+    ) {
+      return { ts: later, o: offsetGuess, fields: requested, wasHole: false };
     }
   }
   const resolved = wallClock(zdt);
-  return { zdt, fields: resolved, wasHole: !sameWallClock(resolved, requested) };
+  return { ts, o, fields: resolved, wasHole: !sameWallClock(resolved, requested) };
+}
+
+/**
+ * ISO calendar date and time. Throws a RangeError for wall clocks that do not exist or lie outside
+ * Temporal's range.
+ */
+export function plainDateTime(f: GregorianDateTime): PlainDateTime {
+  return new (temporal().PlainDateTime)(
+    f.year,
+    f.month,
+    f.day,
+    f.hour,
+    f.minute,
+    f.second,
+    f.millisecond
+  );
 }
 
 /**
@@ -243,7 +245,7 @@ export function resolveWallClock(
  * when the result is not representable.
  */
 export function utcMillis(fields: GregorianDateTime): number {
-  return resolveWallClock(fields, "UTC").zdt.epochMilliseconds;
+  return resolveWallClock(fields, "UTC").ts;
 }
 
 // The Gregorian calendar repeats every 400 years: 4800 months, 146097 days

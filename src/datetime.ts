@@ -55,6 +55,7 @@ import {
   offsetMinutes,
   offsetTimeZoneId,
   plainDate,
+  plainDateTime,
   resolveWallClock,
   temporal,
   utcMillis,
@@ -219,7 +220,7 @@ function clone(inst: DateTime, alts: CloneAlts): DateTime {
 // find the right offset a given local time. The o input is our guess, which determines which
 // offset we'll pick in ambiguous cases (e.g. there are two 3 AMs b/c Fallback DST).
 // Only used for custom zones, which Temporal cannot represent; built-in zones are resolved by
-// Temporal.ZonedDateTime.from (see resolveWallClock).
+// Temporal (see resolveWallClock).
 function fixOffset(localTS: number, o: number, tz: Zone): [number, number, boolean] {
   // Our UTC time is just a guess because our offset is just a guess
   let utcGuess = localTS - o * 60 * 1000;
@@ -270,8 +271,8 @@ function resolveFields(
     const tz = temporalZoneId(zone);
     let resolved: ResolvedLocal;
     if (tz !== null) {
-      const { zdt, fields: c, wasHole } = resolveWallClock(fields, tz, offsetGuess);
-      resolved = { ts: zdt.epochMilliseconds, o: offsetMinutes(zdt), c, wasHole };
+      const { ts, o, fields: c, wasHole } = resolveWallClock(fields, tz, offsetGuess);
+      resolved = { ts, o, c, wasHole };
     } else {
       // custom zones only report the offset of an instant: Luxon's fixOffset, starting from the
       // instant the wall clock would have in UTC
@@ -1749,14 +1750,14 @@ export default class DateTime {
     if (this.tz === null) {
       return possibleOffsetsFromZoneOffsets(this);
     }
-    const c = fieldsOf(this),
-      bag = { ...c, timeZone: this.tz };
+    const c = fieldsOf(this);
     let earlier: ZonedDateTime, later: ZonedDateTime;
     try {
-      earlier = temporal().ZonedDateTime.from(bag, { disambiguation: "earlier" });
-      later = temporal().ZonedDateTime.from(bag, { disambiguation: "later" });
+      const wall = plainDateTime(c);
+      earlier = wall.toZonedDateTime(this.tz, { disambiguation: "earlier" });
+      later = wall.toZonedDateTime(this.tz, { disambiguation: "later" });
     } catch (e) {
-      // the first day of Temporal's range (see resolveWallClock), where nothing is ambiguous
+      // a candidate beyond Temporal's range: within the range the wall clock is not ambiguous
       if (!isRangeError(e)) throw e;
       return [this];
     }

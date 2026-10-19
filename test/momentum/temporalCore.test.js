@@ -1,7 +1,7 @@
 /* global test expect describe */
 import { DateTime, Settings, Zone } from "../../src/momentum";
 
-// The DateTime core on Temporal: wall-clock resolution through Temporal.ZonedDateTime.from,
+// The DateTime core on Temporal: wall-clock resolution through PlainDateTime#toZonedDateTime,
 // getPossibleOffsets, calendar arithmetic and week fields from Temporal.PlainDate, the lazily
 // derived state, the fallback for custom zones, and the cases where Temporal deliberately differs
 // from Luxon's algorithm.
@@ -138,6 +138,32 @@ describe("wall-clock resolution", () => {
     expect(DateTime.fromMillis(8.64e15, { zone: "Asia/Tokyo" }).invalidReason).toBe("invalid input");
     const lastDay = DateTime.fromMillis(8.64e15 - 9 * 3600000, { zone: "Asia/Tokyo" });
     expect(lastDay.set({ hour: 0 }).toISO()).toBe("+275760-09-13T00:00:00.000+09:00");
+  });
+
+  test("a guess whose instant lies past the end of Temporal's range is no candidate", () => {
+    // New York is on summer time in September 275760; "now" in winter guesses -05:00, whose
+    // instant for this wall clock would be past the last representable one
+    const fields = { year: 275760, month: 9, day: 12, hour: 19, minute: 30 },
+      dt = withNow(Date.UTC(2017, 0, 15), () =>
+        DateTime.fromObject(fields, { zone: "America/New_York" })
+      ),
+      expected = T.ZonedDateTime.from({ ...fields, timeZone: "America/New_York" });
+    expect(dt.isValid).toBe(true);
+    expect(dt.toMillis()).toBe(expected.epochMilliseconds);
+    expect(dt.offset).toBe(expected.offsetNanoseconds / 60e9);
+  });
+
+  test("does not depend on what the offset cache holds", () => {
+    // Asia/Manila and Pacific/Guam moved across the date line on 1844-12-31, a transition that
+    // temporal-polyfill's getTimeZoneTransition("next") skips. Moving a DateTime from before it to
+    // after it guesses the old offset, which must not pick an instant through a stale window.
+    Settings.resetCaches();
+    const manila = DateTime.fromMillis(Date.UTC(1844, 5, 1), { zone: "Asia/Manila" });
+    expect(manila.toFormat("ZZ")).toBe("-15:56");
+    expect(manila.set({ year: 1850 }).toISO()).toBe("1850-05-31T08:03:52.000+08:03");
+    expect(manila.plus({ years: 6 }).toISO()).toBe("1850-05-31T08:03:52.000+08:03");
+    const guam = DateTime.fromMillis(Date.UTC(1844, 5, 1), { zone: "Pacific/Guam" });
+    expect(guam.set({ year: 1850 }).toISO()).toBe("1850-05-31T09:39:00.000+09:39");
   });
 
   test("agrees with Temporal's own disambiguation around random transitions", () => {
