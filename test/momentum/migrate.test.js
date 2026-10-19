@@ -209,3 +209,37 @@ test(
   },
   timeout
 );
+
+describe("the published command, @momentum-js/migrate", () => {
+  test(
+    "built for Node, it reports what the source does, with native Temporal and with the polyfill",
+    () => {
+      expect(run("bun", [join(repo, "scripts/build-migrate.ts")]).status).toBe(0);
+      const node = process.versions.bun === undefined ? process.execPath : "node";
+      const bin = join(repo, "migrate/build/cli.js");
+      // --no-harmony-temporal removes Node's Temporal, so the command loads temporal-polyfill
+      expect(run(node, ["--no-harmony-temporal", "-p", "typeof Temporal"]).stdout.trim()).toBe(
+        "undefined"
+      );
+      const dir = copy("partial");
+      try {
+        const source = cli("check", dir, "--json");
+        for (const flags of [[], ["--no-harmony-temporal"]]) {
+          const published = run(node, [...flags, bin, "check", dir, "--json"]);
+          expect([published.status, JSON.parse(published.stdout)]).toEqual([
+            source.status,
+            JSON.parse(source.stdout),
+          ]);
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    timeout
+  );
+
+  test("is versioned in lockstep with the library", () => {
+    const version = (path) => JSON.parse(readFileSync(join(repo, path), "utf8")).version;
+    expect(version("migrate/package.json")).toBe(version("package.json"));
+  });
+});

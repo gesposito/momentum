@@ -4,6 +4,9 @@ node_modules
 # build output and reports
 build
 coverage
+# copies made by scripts/build-migrate.ts for the @momentum-js/migrate package
+migrate/README.md
+migrate/LICENSE.md
 
 # logs and caches
 *.log

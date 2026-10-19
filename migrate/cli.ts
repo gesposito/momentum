@@ -1,9 +1,11 @@
 // momentum's migration tool: reports whether a project can switch from momentum (or Luxon) to
-// native Temporal, and applies the rewrites that have a direct native replacement.
+// native Temporal, and applies the rewrites that have a direct native replacement. Published as the
+// `momentum-migrate` command of @momentum-js/migrate (migrate/bin.ts, built by
+// scripts/build-migrate.ts); in this repository `bun run migrate` runs this file.
 //
-//   bun migrate/cli.ts check [directory] [--accept=a,b|all] [--project=tsconfig.json] [--json] [--verbose]
-//   bun migrate/cli.ts apply [directory] [--accept=a,b|all] [--project=tsconfig.json] [--dry-run]
-//   bun migrate/cli.ts rules
+//   momentum-migrate check [directory] [--accept=a,b|all] [--project=tsconfig.json] [--json] [--verbose]
+//   momentum-migrate apply [directory] [--accept=a,b|all] [--project=tsconfig.json] [--dry-run]
+//   momentum-migrate rules
 //
 // `check` exits with 0 when the codemods complete the switch, 1 when something is left.
 
@@ -18,7 +20,7 @@ import { renderFile } from "./render.js";
 import { jsonReport, textReport } from "./report.js";
 import { allRules } from "./rules.js";
 
-const usage = `usage: bun migrate/cli.ts <check|apply|rules> [directory] [options]
+const usage = `usage: momentum-migrate <check|apply|rules> [directory] [options]
   --accept=a,b|all     apply rewrites with these documented differences (see "rules")
   --project=path       tsconfig.json to use (default: <directory>/tsconfig.json, else inferred)
   --modules=a,b        modules to migrate from (default: ${defaultModules.join(",")})

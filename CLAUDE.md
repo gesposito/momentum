@@ -25,7 +25,7 @@ shows the migration steps) and migrates it one verified step at a time.
 - `bun run build` — `scripts/build.ts` (Bun.build, ESM, `temporal-polyfill` external) + `tsc -p tsconfig.build.json` for `build/types`
 - `bun run benchmark` / `benchmark:compare` / `benchmark:node` / `benchmark:memory` / `benchmark:memory:node` — mitata port of luxon's benchmarks against the built bundle (they build first), optionally against luxon, on Bun or Node; retained memory and bundle size
 - `bun run sync-tests [path]` — re-vendor luxon's tests (default `../luxon`); applies the rewrites documented at the top of `scripts/sync-tests.ts`
-- `bun run migrate check|apply|rules [project]` — `migrate/`: the migration tool to native Temporal (docs/migrate.md). TypeScript 7's async compiler API (`typescript/unstable/async`, works under Bun) finds uses by type; `migrate/rules.ts` is the catalog of replacements, `migrate/differences.ts` the documented differences
+- `bun run migrate check|apply|rules [project]` — `migrate/`: the migration tool to native Temporal (docs/migrate.md). TypeScript 7's async compiler API (`typescript/unstable/async`, works under Bun) finds uses by type; `migrate/rules.ts` is the catalog of replacements, `migrate/differences.ts` the documented differences. Published as `@momentum-js/migrate` (command `momentum-migrate`): `migrate/bin.ts` bundled for Node by `scripts/build-migrate.ts` (`bun run build:migrate`), versioned in lockstep with the library; a release publishes both (`npm publish` at the root and in `migrate/`)
 
 ## Conventions
 

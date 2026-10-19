@@ -105,12 +105,12 @@ A few corner cases behave differently from Luxon:
 
 ## Moving on to native Temporal
 
-momentum is meant to be temporary. `bun run migrate check <project>` finds every use of momentum
-(or Luxon) with TypeScript's type checker and reports whether the rewrites with a native Temporal
-replacement complete the switch, listing what is left when they don't; `bun run migrate apply`
-writes them. Rewrites are applied by default only when they are exact, proven against momentum by
-property tests; those that differ in documented corner cases wait for `--accept`. See
-[docs/migrate.md](docs/migrate.md).
+momentum is meant to be temporary. `npx @momentum-js/migrate check <project>` (or `bunx`) finds
+every use of momentum (or Luxon) with TypeScript's type checker and reports whether the rewrites
+with a native Temporal replacement complete the switch, listing what is left when they don't;
+`npx @momentum-js/migrate apply <project>` writes them. Rewrites are applied by default only when
+they are exact, proven against momentum by property tests; those that differ in documented corner
+cases wait for `--accept`. See [docs/migrate.md](docs/migrate.md).
 
 ## Opting out of the Temporal-native core
 
@@ -170,6 +170,8 @@ with both cores, is 82.5 kB (25.9 kB gzipped) against Luxon's 79.8 kB (24.1 kB g
 - ESM only, `"sideEffects"` declared so bundlers can drop unused modules; the main entry never
   touches globals, only `@momentum-js/momentum/polyfill` does.
 - `build/momentum.js` (readable), `build/momentum.min.js` (minified) and `build/types/*.d.ts`.
+- The migration tool is a separate package, `@momentum-js/migrate` (command `momentum-migrate`),
+  released with the same version and bundling the library it was proven against.
 - Node.js 20+, Bun 1.1+, evergreen browsers.
 
 ## Development

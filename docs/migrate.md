@@ -5,12 +5,17 @@ far a project is from dropping momentum (or Luxon) and rewrites what already has
 replacement.
 
 ```sh
-bun run migrate check path/to/project              # would the rewrites complete the switch?
-bun run migrate check path/to/project --verbose    # every location, not just the first three
-bun run migrate apply path/to/project --dry-run    # show the rewrites as a diff
-bun run migrate apply path/to/project              # write them
-bun run migrate rules                              # the catalog and the documented differences
+npx @momentum-js/migrate check path/to/project            # would the rewrites complete the switch?
+npx @momentum-js/migrate check path/to/project --verbose  # every location, not just the first 3
+npx @momentum-js/migrate apply path/to/project --dry-run  # show the rewrites as a diff
+npx @momentum-js/migrate apply path/to/project            # write them
+npx @momentum-js/migrate rules                            # the catalog and the differences
 ```
+
+The tool is the package `@momentum-js/migrate`, released with momentum under the same version and
+bundling the library it was proven against. It runs on Node 20 or later and on Bun (`bunx` works
+like `npx`), loading temporal-polyfill where Temporal is missing; in a clone of this repository,
+`bun run migrate` runs it from source.
 
 `check` exits with 0 when the project can switch completely and 1 otherwise, so it can gate a CI job.
 `--json` prints a machine-readable report, and `--project` points at a tsconfig.json other than the
@@ -74,7 +79,7 @@ The new text keeps everything outside the rewritten expressions byte for byte. A
 | `negative-duration-iso` | negative durations are written -PT2H instead of PT-2H |
 | `duration-calendar-units` | durations with years, months or weeks need a reference date to be totalled |
 
-`bun run migrate rules` prints each one with an example.
+`npx @momentum-js/migrate rules` prints each one with an example.
 
 ## What keeps momentum alive
 
