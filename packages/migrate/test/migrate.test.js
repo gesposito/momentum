@@ -1,6 +1,6 @@
 /* global test expect describe */
 // End-to-end checks of the migration tool (migrate/cli.ts), run as a subprocess on copies of the
-// projects in test/momentum/fixtures/migrate: the report, the rewritten files (compared with the
+// projects in packages/migrate/test/fixtures/migrate: the report, the rewritten files (compared with the
 // reviewed outputs in expected/), the type check of the result, and the values the fixture
 // computes before and after the rewrite.
 
@@ -18,8 +18,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const repo = process.cwd();
-const fixtures = join(repo, "test/momentum/fixtures/migrate");
+const repo = join(__dirname, "../../..");
+const fixtures = join(repo, "packages/migrate/test/fixtures/migrate");
 const timeout = 60000;
 
 function copy(name, { tsconfig = true } = {}) {
@@ -38,7 +38,7 @@ function copy(name, { tsconfig = true } = {}) {
           noEmit: true,
           skipLibCheck: true,
           paths: {
-            "@momentum-js/momentum": [join(repo, "src/momentum.ts")],
+            "@momentum-js/momentum": [join(repo, "packages/luxon/src/momentum.ts")],
             dayjs: [join(repo, "node_modules/dayjs")],
             "dayjs/*": [join(repo, "node_modules/dayjs/*")],
           },
@@ -60,7 +60,7 @@ function copy(name, { tsconfig = true } = {}) {
     );
     writeFileSync(
       join(dir, "node_modules/@momentum-js/momentum/index.ts"),
-      `export * from ${JSON.stringify(join(repo, "src/momentum.ts"))};\n`
+      `export * from ${JSON.stringify(join(repo, "packages/luxon/src/momentum.ts"))};\n`
     );
     // and Day.js, as installed
     symlinkSync(join(repo, "node_modules/dayjs"), join(dir, "node_modules/dayjs"));
@@ -74,7 +74,7 @@ const run = (command, args, cwd = repo) =>
     encoding: "utf8",
     env: { ...process.env, TZ: "America/New_York" },
   });
-const cli = (...args) => run("bun", [join(repo, "migrate/cli.ts"), ...args]);
+const cli = (...args) => run("bun", [join(repo, "packages/migrate/src/cli.ts"), ...args]);
 const report = (dir, ...args) => {
   const result = cli("check", dir, "--json", ...args);
   return { status: result.status, ...JSON.parse(result.stdout) };
@@ -267,9 +267,9 @@ describe("the published command, @momentum-js/migrate", () => {
   test(
     "built for Node, it reports what the source does, with native Temporal and with the polyfill",
     () => {
-      expect(run("bun", [join(repo, "scripts/build-migrate.ts")]).status).toBe(0);
+      expect(run("bun", [join(repo, "packages/migrate/scripts/build.ts")]).status).toBe(0);
       const node = process.versions.bun === undefined ? process.execPath : "node";
-      const bin = join(repo, "migrate/build/cli.js");
+      const bin = join(repo, "packages/migrate/build/cli.js");
       // --no-harmony-temporal removes Node's Temporal, so the command loads temporal-polyfill
       expect(run(node, ["--no-harmony-temporal", "-p", "typeof Temporal"]).stdout.trim()).toBe(
         "undefined"
@@ -293,6 +293,6 @@ describe("the published command, @momentum-js/migrate", () => {
 
   test("is versioned in lockstep with the library", () => {
     const version = (path) => JSON.parse(readFileSync(join(repo, path), "utf8")).version;
-    expect(version("migrate/package.json")).toBe(version("package.json"));
+    expect(version("packages/migrate/package.json")).toBe(version("packages/luxon/package.json"));
   });
 });

@@ -24,5 +24,5 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ---
 
 The `dayjs` directory of the repository holds Day.js's source and test suite
-(https://github.com/iamkun/dayjs), used under the MIT license in `dayjs/LICENSE` as the reference
+(https://github.com/iamkun/dayjs), used under the MIT license in `packages/dayjs/LICENSE` as the reference
 the migration tool's Day.js rules are checked against; none of it is part of the published packages.

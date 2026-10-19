@@ -34,7 +34,7 @@ Each use gets one of three outcomes:
 
 - **exact**: a native expression gives the same result for every input. Exact rewrites are
   applied by default. Each one is proven by property tests against momentum
-  (`test/momentum/migrateRules.test.js`), which evaluate the very text the tool would write.
+  (`packages/migrate/test/migrateRules.test.js`), which evaluate the very text the tool would write.
 - **differs**: a native replacement exists but behaves differently in documented cases, listed
   below. These rewrites are applied only with `--accept=<difference>,...` (or `--accept=all`).
 - **none**: no native replacement yet. The report lists these with the reason; they are what
@@ -87,7 +87,7 @@ project switches, the imports of dayjs and its plugins go, with the `dayjs.exten
 What has no replacement: other format tokens, locales, the start of a week, `isSame` with a unit,
 `diff` in days and longer units, and what Day.js's other plugins add. In a project that uses the
 timezone plugin, values in a zone keep a fixed offset through arithmetic, so its arithmetic carries
-`dayjs-zones`. `test/momentum/migrateDayjs.test.js` checks each exact rewrite against Day.js itself.
+`dayjs-zones`. `packages/migrate/test/migrateDayjs.test.js` checks each exact rewrite against Day.js itself.
 
 Plugins that patch the methods the tool rewrites count for the whole project. With badMutable
 nothing is rewritten, since values become mutable; with preParsePostFormat, parsing and `format`
@@ -150,15 +150,15 @@ invalid DateTimes, whose checks (`isValid`) become try/catch around the place th
 
 ## How the tool is checked
 
-Besides the property tests (`test/momentum/migrateRules.test.js` against momentum,
-`test/momentum/migrateDayjs.test.js` against Day.js, which `bun run test:dayjs-zones` repeats in
-ten system zones with unusual DST rules), `test/momentum/migrate.test.js` runs the tool on the
-projects in `test/momentum/fixtures/migrate`, Day.js ones among them: the report, the rewritten
+Besides the property tests (`packages/migrate/test/migrateRules.test.js` against momentum,
+`packages/migrate/test/migrateDayjs.test.js` against Day.js, which `bun run test:dayjs-zones` repeats in
+ten system zones with unusual DST rules), `packages/migrate/test/migrate.test.js` runs the tool on the
+projects in `packages/migrate/test/fixtures/migrate`, Day.js ones among them: the report, the rewritten
 files against reviewed outputs, the type check of the result, and the values each project computes
 before and after.
 
 As a larger check, applying the exact rewrites to Luxon's own test suite leaves all 1292 tests
-passing, and Day.js's own suite (1.11.23) is vendored in `dayjs/` with Day.js's source and history
+passing, and Day.js's own suite (1.11.23) is vendored in `packages/dayjs/` with Day.js's source and history
 (`bun run sync-dayjs` re-vendors it from a checkout, pointing its imports at the package's entry
 points). `bun run test:dayjs-suite` runs it against that source before and after the exact
 rewrites, applied file by file since a few files load badMutable, which stops every rewrite in a

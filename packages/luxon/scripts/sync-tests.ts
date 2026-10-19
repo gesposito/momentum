@@ -6,12 +6,14 @@
 // CommonJS `exports.x = ...`, which Bun's loader rejects; it becomes a plain ES module with named
 // exports plus a default export object.
 //
-// Usage: bun scripts/sync-tests.ts [path-to-luxon-checkout]   (default: ../luxon)
+// Usage: bun packages/luxon/scripts/sync-tests.ts [path-to-luxon-checkout]   (default: ../luxon)
 
 import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-const luxonRoot = resolve(process.argv[2] ?? join(import.meta.dir, "..", "..", "luxon"));
+const luxonRoot = resolve(
+  process.argv[2] ?? join(import.meta.dir, "..", "..", "..", "..", "luxon")
+);
 const sourceDir = join(luxonRoot, "test");
 const targetDir = join(import.meta.dir, "..", "test");
 

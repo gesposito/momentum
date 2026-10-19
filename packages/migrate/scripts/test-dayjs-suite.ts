@@ -1,4 +1,4 @@
-// Runs Day.js's own test suite (dayjs/test, vendored by scripts/sync-dayjs.ts) against the vendored
+// Runs Day.js's own test suite (packages/dayjs/test, vendored by packages/dayjs/scripts/sync.ts) against the vendored
 // source, then applies the migration tool's exact rewrites to a copy of the suite and runs that too:
 // every test that passed must still pass. Each file is analysed as a project of its own, since some
 // files load badMutable, which stops every rewrite in a project. The rewritten copy runs with
@@ -10,18 +10,18 @@
 //   bun run test:dayjs-suite                   America/New_York and Pacific/Auckland
 //   bun run test:dayjs-suite Europe/London     the zones given
 //
-// The rewritten copy stays in dayjs/.rewritten for inspection.
+// The rewritten copy stays in packages/dayjs/.rewritten for inspection.
 
 import { cpSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { API } from "typescript/unstable/async";
-import { analyze, defaultModules, selectRewrites } from "../migrate/analyze.js";
-import type { DifferenceId } from "../migrate/differences.js";
-import type { LoadedProject } from "../migrate/project.js";
-import { renderFile } from "../migrate/render.js";
+import { analyze, defaultModules, selectRewrites } from "../src/analyze.js";
+import type { DifferenceId } from "../src/differences.js";
+import type { LoadedProject } from "../src/project.js";
+import { renderFile } from "../src/render.js";
 
-const root = join(import.meta.dir, "..");
-const suite = join(root, "dayjs");
+const root = join(import.meta.dir, "../../..");
+const suite = join(root, "packages/dayjs");
 const work = join(suite, ".rewritten");
 const zones =
   process.argv.length > 2 ? process.argv.slice(2) : ["America/New_York", "Pacific/Auckland"];

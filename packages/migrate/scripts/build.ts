@@ -1,18 +1,18 @@
-// Builds the published migration command, migrate/build/cli.js (package @momentum-js/migrate,
-// command momentum-migrate): migrate/bin.ts bundled for Node with the momentum source the catalog
+// Builds the published migration command, build/cli.js (package @momentum-js/migrate,
+// command momentum-migrate): src/bin.ts bundled for Node with the momentum source the catalog
 // was proven against. TypeScript and temporal-polyfill stay external, as the package's
-// dependencies. The package's README and license are copies of docs/migrate.md and LICENSE.md.
+// dependencies. The package's README and license are copies of docs/migrate.md and LICENSE.md at the repository root.
 
 import { chmod, copyFile, rm } from "node:fs/promises";
 
 const root = new URL("..", import.meta.url).pathname;
 process.chdir(root);
 
-await rm("migrate/build", { recursive: true, force: true });
+await rm("build", { recursive: true, force: true });
 
 const result = await Bun.build({
-  entrypoints: ["migrate/bin.ts"],
-  outdir: "migrate/build",
+  entrypoints: ["src/bin.ts"],
+  outdir: "build",
   naming: "cli.js",
   format: "esm",
   target: "node",
@@ -23,10 +23,10 @@ if (!result.success) {
   process.exit(1);
 }
 
-const cli = "migrate/build/cli.js";
+const cli = "build/cli.js";
 const text = (await Bun.file(cli).text()).replace(/^#!.*\n/, "");
 await Bun.write(cli, `#!/usr/bin/env node\n${text}`);
 await chmod(cli, 0o755);
-await copyFile("docs/migrate.md", "migrate/README.md");
-await copyFile("LICENSE.md", "migrate/LICENSE.md");
+await copyFile("../../docs/migrate.md", "README.md");
+await copyFile("../../LICENSE.md", "LICENSE.md");
 console.log(`${cli}  ${(Bun.file(cli).size / 1024).toFixed(1)} kB`);

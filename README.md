@@ -110,7 +110,7 @@ every use of momentum (or Luxon, or Day.js) with TypeScript's type checker and r
 the rewrites with a native Temporal replacement complete the switch, listing what is left when
 they don't; `npx @momentum-js/migrate apply <project>` writes them. Rewrites are applied by
 default only when they are exact, proven against the library by property tests (and, for Day.js,
-by its own test suite, vendored with Day.js's source and history under `dayjs/`); those that
+by its own test suite, vendored with Day.js's source and history under `packages/dayjs/`); those that
 differ in documented corner cases wait for `--accept`. See [docs/migrate.md](docs/migrate.md).
 
 ## Opting out of the Temporal-native core
@@ -181,7 +181,9 @@ Footprint, from `bun run benchmark:memory` (Bun 1.4.3) and `bun run benchmark:me
 
 ## Development
 
-Everything runs through Bun:
+The repository is a Bun workspace: the library in `packages/luxon`, the migration tool in
+`packages/migrate`, Day.js's code and test suite in `packages/dayjs`. Everything runs through Bun,
+from the root:
 
 ```sh
 bun install
@@ -189,7 +191,7 @@ bun run test            # Luxon's suite on Jest; Node's native Temporal, or temp
 bun run test:polyfill   # the same suite with the polyfill forced
 bun run test:opt-out    # the same suite with Settings.temporalNative = false
 bun run test:bun        # the same suite on bun test, on Bun's native Temporal
-bun check               # type check
+bun run typecheck       # type check of both packages
 bun run build           # bundles + declarations
 bun run benchmark       # Luxon's benchmark cases, ported to mitata (Bun)
 bun run benchmark:compare   # side by side with luxon (Bun)
@@ -202,13 +204,13 @@ bun run sync-dayjs      # re-vendor Day.js's code and tests from a checkout (def
 bun run migrate check <project>   # how far a project is from native Temporal (docs/migrate.md)
 ```
 
-The tests come in three groups. Luxon's suite fills `test/`; `bun run sync-tests` vendors it and
-it is never edited by hand. `test/parity/` checks Luxon behaviour that its suite does not cover,
-with every expectation taken from Luxon 3.7.2. `test/momentum/` covers what momentum adds: the
+The tests come in three groups. Luxon's suite fills `packages/luxon/test/`; `bun run sync-tests` vendors it and
+it is never edited by hand. `packages/luxon/test/parity/` checks Luxon behaviour that its suite does not cover,
+with every expectation taken from Luxon 3.7.2. `packages/luxon/test/momentum/` covers what momentum adds: the
 Temporal interop, the polyfill entry point, the offset cache, the two cores and the API-surface
 snapshot. `MOMENTUM_TEMPORAL_NATIVE=false` runs any of the test and benchmark scripts with the
 opt-out; tests written for one core set it themselves. Day.js's own suite sits apart in
-`dayjs/test`, with Day.js's source, for `bun run test:dayjs-suite`.
+`packages/dayjs/test`, with Day.js's source, for `bun run test:dayjs-suite`.
 
 Randomized checks are [fast-check](https://fast-check.dev) properties, so a failure shrinks to a
 minimal counterexample and prints the seed and path that replay it. Each property runs 100 times
@@ -216,13 +218,13 @@ by default; `FC_NUM_RUNS` raises that for a longer fuzzing session, and `FC_SEED
 replays a reported failure:
 
 ```sh
-FC_NUM_RUNS=20000 bun run jest test/momentum
+FC_NUM_RUNS=20000 bun run jest packages/luxon/test/momentum
 FC_SEED=-1819918769 FC_PATH="12:3" bun run jest -t "name of the test"
 ```
 
 `mise.toml` pins Node 26 and Bun 1.4, so with [mise](https://mise.jdx.dev) the tests run on Node's
 native Temporal. `bun run test` is the reference run. `bun run test:bun` compares its failures with
-`test/bun-known-failures.txt`, the tests that fail only because of Bun's engine: three on every
+`packages/luxon/test/bun-known-failures.txt`, the tests that fail only because of Bun's engine: three on every
 platform (JavaScriptCore puts plain spaces in date ranges, and Bun's snapshots do not call
 `toJSON()`) and nineteen more on macOS, where Bun uses Apple's ICU (Latin digits for `bn`, " at "
 between date and time, among others); see [docs/bun-compatibility.md](docs/bun-compatibility.md).
@@ -231,7 +233,7 @@ momentum works around a few upstream bugs in Temporal polyfills, engines and Bun
 [docs/upstream.md](docs/upstream.md) lists each one with its issue and the code its fix lets us
 delete.
 
-`scripts/sync-tests.ts` copies Luxon's `test/` directory, rewrites the import paths, turns the
+`packages/luxon/scripts/sync-tests.ts` copies Luxon's `packages/luxon/test/` directory, rewrites the import paths, turns the
 CommonJS helper module into an ES module, and compares strings containing U+202F with Luxon's
 own whitespace-tolerant matcher, because Node 26 and Bun replace the U+202F that CLDR puts
 between a time and its AM/PM marker with a regular space. The repository has no formatter

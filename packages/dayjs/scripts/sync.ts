@@ -1,5 +1,5 @@
-// Vendors Day.js's source and test suite into ./dayjs, the reference for the migration tool's Day.js
-// rules: scripts/test-dayjs-suite.ts runs the suite against this source before and after the tool's
+// Vendors Day.js's source and test suite into packages/dayjs, the reference for the migration tool's Day.js
+// rules: packages/migrate/scripts/test-dayjs-suite.ts runs the suite against this source before and after the tool's
 // rewrites. src/, types/ and LICENSE are copied as they are. The tests import the source by relative
 // paths (`../src`, `../../src/plugin/utc`, `../../src/constant`); those become the entry points of
 // the dayjs package (`dayjs`, `dayjs/plugin/utc`, `dayjs/esm/constant`), which is how a project
@@ -9,13 +9,15 @@
 // their names. Two files stay out: test/__mocks__/dayjs.js, which the module mapping replaces, and
 // test/browser.spec.js, a Karma test.
 //
-// Usage: bun scripts/sync-dayjs.ts [path-to-dayjs-checkout]   (default: ../dayjs)
+// Usage: bun packages/dayjs/scripts/sync.ts [path-to-dayjs-checkout]   (default: ../dayjs)
 
 import { cpSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-const dayjsRoot = resolve(process.argv[2] ?? join(import.meta.dir, "..", "..", "dayjs"));
-const targetDir = join(import.meta.dir, "..", "dayjs");
+const dayjsRoot = resolve(
+  process.argv[2] ?? join(import.meta.dir, "..", "..", "..", "..", "dayjs")
+);
+const targetDir = join(import.meta.dir, "..");
 
 const skipped = new Set(["__mocks__/dayjs.js", "browser.spec.js"]);
 

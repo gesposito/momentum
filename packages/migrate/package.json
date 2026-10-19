@@ -15,7 +15,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gesposito/momentum.git",
-    "directory": "migrate"
+    "directory": "packages/migrate"
   },
   "license": "MIT",
   "author": "Gianluca Esposito <g@esposi.to>",
@@ -35,7 +35,8 @@
     "access": "public"
   },
   "scripts": {
-    "prepack": "bun ../scripts/build-migrate.ts"
+    "build": "bun scripts/build.ts",
+    "prepack": "bun scripts/build.ts"
   },
   "dependencies": {
     "temporal-polyfill": "^1.0.6",

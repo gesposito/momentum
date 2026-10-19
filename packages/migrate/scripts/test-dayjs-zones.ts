@@ -1,5 +1,5 @@
 // Runs the Day.js exactness properties (the "agree with Day.js" tests of
-// test/momentum/migrateDayjs.test.js) with the system zone set to zones whose rules New York's
+// packages/migrate/test/migrateDayjs.test.js) with the system zone set to zones whose rules New York's
 // cannot reach: DST changes at midnight, 30-minute and negative DST, quarter-hour offsets, the
 // southern hemisphere and UTC. Day.js's local values follow the system zone, so each zone is a
 // Jest run of its own.
@@ -8,7 +8,7 @@
 //   bun run test:dayjs-zones Asia/Kathmandu    the zones given
 //   FC_NUM_RUNS=1000 bun run test:dayjs-zones  longer properties
 
-const root = new URL("..", import.meta.url).pathname;
+const root = new URL("../../..", import.meta.url).pathname;
 
 const zones =
   process.argv.length > 2
@@ -29,7 +29,12 @@ const zones =
 let failed = false;
 for (const zone of zones) {
   const result = Bun.spawnSync(
-    ["node_modules/.bin/jest", "test/momentum/migrateDayjs.test.js", "-t", "agree with Day.js"],
+    [
+      "node_modules/.bin/jest",
+      "packages/migrate/test/migrateDayjs.test.js",
+      "-t",
+      "agree with Day.js",
+    ],
     {
       cwd: root,
       env: { ...process.env, TZ: zone, LANG: "en_US.utf8" },

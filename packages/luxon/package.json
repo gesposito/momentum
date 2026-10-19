@@ -1,0 +1,75 @@
+{
+  "name": "@momentum-js/momentum",
+  "version": "0.1.0",
+  "description": "Luxon-compatible immutable dates, durations and intervals, powered by Temporal",
+  "keywords": [
+    "date",
+    "time",
+    "temporal",
+    "luxon",
+    "immutable",
+    "timezone"
+  ],
+  "homepage": "https://github.com/gesposito/momentum#readme",
+  "bugs": "https://github.com/gesposito/momentum/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gesposito/momentum.git",
+    "directory": "packages/luxon"
+  },
+  "license": "MIT",
+  "author": "Gianluca Esposito <g@esposi.to>",
+  "type": "module",
+  "sideEffects": [
+    "./src/polyfill.ts",
+    "./build/polyfill.js"
+  ],
+  "main": "./build/momentum.js",
+  "types": "./build/types/momentum.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/types/momentum.d.ts",
+      "default": "./build/momentum.js"
+    },
+    "./polyfill": {
+      "types": "./build/types/polyfill.d.ts",
+      "default": "./build/polyfill.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "build",
+    "src",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun run build:js && bun run build:types",
+    "build:js": "bun scripts/build.ts",
+    "build:types": "tsc -p tsconfig.build.json",
+    "benchmark": "bun run build:js && bun benchmarks/index.ts",
+    "benchmark:compare": "bun run build:js && bun benchmarks/index.ts --compare",
+    "benchmark:node": "bun run build:js && node --expose-gc benchmarks/index.ts --compare",
+    "benchmark:memory": "bun run build:js && bun benchmarks/memory.ts",
+    "benchmark:memory:node": "bun run build:js && node --expose-gc benchmarks/memory.ts",
+    "sync-tests": "bun scripts/sync-tests.ts",
+    "prepack": "bun run build && cp ../../README.md ../../LICENSE.md ."
+  },
+  "dependencies": {
+    "temporal-spec": "^1.0.1"
+  },
+  "peerDependencies": {
+    "temporal-polyfill": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "temporal-polyfill": {
+      "optional": true
+    }
+  }
+}

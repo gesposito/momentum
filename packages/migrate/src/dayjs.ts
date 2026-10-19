@@ -4,7 +4,7 @@
 // dayjs.utc(), the given zone for dayjs.tz(). Day.js computes with Date's local-time setters,
 // which resolve a skipped or repeated wall-clock time like Temporal's "compatible"
 // disambiguation, so setter-like rewrites use `with(fields, { offset: "ignore" })`.
-// Exactness is checked against Day.js itself by test/momentum/migrateDayjs.test.js.
+// Exactness is checked against Day.js itself by packages/migrate/test/migrateDayjs.test.js.
 
 import type { Arg, ClassName, Context, Outcome, RuleKit } from "./rules.js";
 import type { DifferenceId } from "./differences.js";

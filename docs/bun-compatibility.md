@@ -6,7 +6,7 @@ engine, not from momentum. Nineteen fail on macOS only, because Bun uses Apple's
 (sections 1 to 4); two fail everywhere because JavaScriptCore formats date ranges with plain
 spaces (section 5), and one because Bun's snapshots do not call `toJSON()` (section 6).
 `MOMENTUM_TEMPORAL=polyfill bun test` fails the same tests, which confirms the Temporal engine
-behaves identically on both paths. The allowlist lives in `test/bun-known-failures.txt`, whose
+behaves identically on both paths. The allowlist lives in `packages/luxon/test/bun-known-failures.txt`, whose
 `[darwin]` section holds the macOS-only failures; `scripts/test-bun.ts` fails only on new failures.
 
 ## macOS only: Apple's ICU
@@ -95,7 +95,7 @@ that gives the console, `Bun.inspect` and `bun:test` one value formatter, still 
 - `bun test` fails a `toMatchSnapshot()` whose `.snap` file is read-only, even when it matches
   ([oven-sh/bun#46051](https://github.com/oven-sh/bun/issues/46051)), so the API-surface snapshot
   test needs a writable checkout, unlike under Jest.
-- Bun's loader rejects `test/helpers.js` as Luxon ships it (ESM imports next to CommonJS
-  `exports`); `scripts/sync-tests.ts` converts it to an ES module.
+- Bun's loader rejects `packages/luxon/test/helpers.js` as Luxon ships it (ESM imports next to CommonJS
+  `exports`); `packages/luxon/scripts/sync-tests.ts` converts it to an ES module.
 - `bun fmt` is documented but not part of any released Bun (latest 1.4.3, 2026-10-10; the
   formatter landed on main on 2026-10-16/17). The repository has no formatter until it ships.

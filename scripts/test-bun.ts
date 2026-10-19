@@ -1,9 +1,9 @@
 // Runs Luxon's suite under `bun test` and compares the failing tests with the allowlist in
-// test/bun-known-failures.txt, which lists failures caused by Bun's engine (see
+// packages/luxon/test/bun-known-failures.txt, which lists failures caused by Bun's engine (see
 // docs/bun-compatibility.md), some of them on one platform only. New failures fail the run;
 // fixed ones are reported so the list can be trimmed. Extra arguments are passed to `bun test`.
 
-const allowlist = new URL("../test/bun-known-failures.txt", import.meta.url);
+const allowlist = new URL("../packages/luxon/test/bun-known-failures.txt", import.meta.url);
 // names before the first [platform] line fail everywhere, later ones only on that platform
 const known = new Set<string>();
 let platform: string | undefined;
@@ -40,14 +40,17 @@ const failing = new Set(
 );
 // an error outside any test (a test file that fails to load, say) is never an engine difference
 const errors = Number(output.match(/^ *(\d+) errors?$/m)?.[1] ?? 0);
-const summary = output.match(/^ *\d+ pass\n *\d+ fail\n[\s\S]*?Ran .*$/m)?.[0] ?? output.slice(-400);
+const summary =
+  output.match(/^ *\d+ pass\n *\d+ fail\n[\s\S]*?Ran .*$/m)?.[0] ?? output.slice(-400);
 
 const unexpected = [...failing].filter((name) => !known.has(name));
 const fixed = [...known].filter((name) => !failing.has(name));
 
 console.log(summary.trim());
 if (fixed.length > 0) {
-  console.log(`\n${fixed.length} known failure(s) now pass; remove them from test/bun-known-failures.txt:`);
+  console.log(
+    `\n${fixed.length} known failure(s) now pass; remove them from packages/luxon/test/bun-known-failures.txt:`
+  );
   for (const name of fixed) console.log(`  ${name}`);
 }
 if (unexpected.length > 0) {

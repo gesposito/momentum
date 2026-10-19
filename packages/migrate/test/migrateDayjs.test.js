@@ -9,9 +9,14 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import devHelper from "dayjs/plugin/devHelper";
-import { fc, nearTransition, transitions, wallClockNearTransition } from "./fastCheck";
-import { compareOutcome, findRule, toStringOutcome, valueOfOutcome } from "../../migrate/rules";
-import { differenceIds } from "../../migrate/differences";
+import {
+  fc,
+  nearTransition,
+  transitions,
+  wallClockNearTransition,
+} from "../../luxon/test/momentum/fastCheck";
+import { compareOutcome, findRule, toStringOutcome, valueOfOutcome } from "../src/rules";
+import { differenceIds } from "../src/differences";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);

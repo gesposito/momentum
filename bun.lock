@@ -4,9 +4,6 @@
   "workspaces": {
     "": {
       "name": "@momentum-js/momentum",
-      "dependencies": {
-        "temporal-spec": "^1.0.1",
-      },
       "devDependencies": {
         "@babel/core": "^7.26.0",
         "@babel/preset-env": "^7.26.0",
@@ -24,12 +21,30 @@
         "temporal-polyfill": "^1.0.6",
         "typescript": "~7.0.2",
       },
+    },
+    "packages/luxon": {
+      "name": "@momentum-js/momentum",
+      "version": "0.1.0",
+      "dependencies": {
+        "temporal-spec": "^1.0.1",
+      },
       "peerDependencies": {
         "temporal-polyfill": "^1.0.0",
       },
       "optionalPeers": [
         "temporal-polyfill",
       ],
+    },
+    "packages/migrate": {
+      "name": "@momentum-js/migrate",
+      "version": "0.1.0",
+      "bin": {
+        "momentum-migrate": "./build/cli.js",
+      },
+      "dependencies": {
+        "temporal-polyfill": "^1.0.6",
+        "typescript": "~7.0.2",
+      },
     },
   },
   "packages": {
@@ -292,6 +307,10 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.6.0", "", {}, "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@momentum-js/migrate": ["@momentum-js/migrate@workspace:packages/migrate"],
+
+    "@momentum-js/momentum": ["@momentum-js/momentum@workspace:packages/luxon"],
 
     "@sinclair/typebox": ["@sinclair/typebox@0.27.12", "", {}, "sha512-hhyNJ+nbR6ZR7pToHvllEFun9TL0sbL+tk/ON75lo+Xas054uez98qRbsuNt7MBCyZKK4+8Yli/OAGZhmfBZ/g=="],
 

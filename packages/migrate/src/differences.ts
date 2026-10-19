@@ -1,7 +1,7 @@
 // The ways a native Temporal replacement can behave differently from momentum or Day.js. A
 // rewrite that carries any of these is applied only when the user accepts them (`--accept`); each
-// one was observed by comparing the library with Temporal, see test/momentum/migrateRules.test.js
-// and test/momentum/migrateDayjs.test.js.
+// one was observed by comparing the library with Temporal, see packages/migrate/test/migrateRules.test.js
+// and packages/migrate/test/migrateDayjs.test.js.
 
 export interface Difference {
   /** One line: what changes. */

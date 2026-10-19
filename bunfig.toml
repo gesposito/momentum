@@ -1,4 +1,9 @@
+[install]
+# the classic node_modules layout: the Jest configurations exempt the ESM-only Temporal packages
+# from transformIgnorePatterns by their path under node_modules/
+linker = "hoisted"
+
 [test]
-preload = ["./test/setupTests.js"]
-# Day.js's own test suite, vendored in dayjs/, runs through scripts/test-dayjs-suite.ts
-pathIgnorePatterns = ["dayjs/**"]
+preload = ["./packages/luxon/test/setupTests.js"]
+# Day.js's own test suite, vendored in packages/dayjs, runs through packages/migrate/scripts/test-dayjs-suite.ts
+pathIgnorePatterns = ["packages/dayjs/**"]

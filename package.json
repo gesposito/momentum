@@ -1,86 +1,36 @@
 {
-  "name": "@momentum-js/momentum",
-  "version": "0.1.0",
-  "description": "Luxon-compatible immutable dates, durations and intervals, powered by Temporal",
-  "keywords": [
-    "date",
-    "time",
-    "temporal",
-    "luxon",
-    "immutable",
-    "timezone"
-  ],
-  "homepage": "https://github.com/gesposito/momentum#readme",
-  "bugs": "https://github.com/gesposito/momentum/issues",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/gesposito/momentum.git"
-  },
+  "name": "momentum",
+  "private": true,
+  "description": "Luxon-compatible dates on Temporal, Day.js as a reference, and the migration tool to native Temporal",
   "license": "MIT",
   "author": "Gianluca Esposito <g@esposi.to>",
   "type": "module",
-  "sideEffects": [
-    "./src/polyfill.ts",
-    "./build/polyfill.js"
-  ],
-  "main": "./build/momentum.js",
-  "types": "./build/types/momentum.d.ts",
-  "exports": {
-    ".": {
-      "types": "./build/types/momentum.d.ts",
-      "default": "./build/momentum.js"
-    },
-    "./polyfill": {
-      "types": "./build/types/polyfill.d.ts",
-      "default": "./build/polyfill.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "build",
-    "src",
-    "LICENSE.md",
-    "README.md"
+  "workspaces": [
+    "packages/*"
   ],
   "engines": {
     "node": ">=20"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
-    "build": "bun run build:js && bun run build:types",
-    "build:js": "bun scripts/build.ts",
-    "build:types": "tsc -p tsconfig.build.json",
-    "build:migrate": "bun scripts/build-migrate.ts",
-    "typecheck": "bun check && bun check -p migrate",
-    "migrate": "bun migrate/cli.ts",
+    "build": "bun run build:luxon && bun run build:migrate",
+    "build:luxon": "bun run --cwd packages/luxon build",
+    "build:migrate": "bun run --cwd packages/migrate build",
+    "typecheck": "bun check -p packages/luxon && bun check -p packages/migrate",
+    "migrate": "bun packages/migrate/src/cli.ts",
     "test": "TZ=America/New_York LANG=en_US.utf8 jest --coverage",
     "test:polyfill": "MOMENTUM_TEMPORAL=polyfill TZ=America/New_York LANG=en_US.utf8 jest",
     "test:opt-out": "MOMENTUM_TEMPORAL_NATIVE=false TZ=America/New_York LANG=en_US.utf8 jest",
     "jest": "TZ=America/New_York LANG=en_US.utf8 jest",
     "test:bun": "bun scripts/test-bun.ts",
-    "test:dayjs-zones": "bun scripts/test-dayjs-zones.ts",
-    "test:dayjs-suite": "bun scripts/test-dayjs-suite.ts",
-    "benchmark": "bun run build:js && bun benchmarks/index.ts",
-    "benchmark:compare": "bun run build:js && bun benchmarks/index.ts --compare",
-    "benchmark:node": "bun run build:js && node --expose-gc benchmarks/index.ts --compare",
-    "benchmark:memory": "bun run build:js && bun benchmarks/memory.ts",
-    "benchmark:memory:node": "bun run build:js && node --expose-gc benchmarks/memory.ts",
-    "sync-tests": "bun scripts/sync-tests.ts",
-    "sync-dayjs": "bun scripts/sync-dayjs.ts",
-    "prepack": "bun run build"
-  },
-  "dependencies": {
-    "temporal-spec": "^1.0.1"
-  },
-  "peerDependencies": {
-    "temporal-polyfill": "^1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "temporal-polyfill": {
-      "optional": true
-    }
+    "test:dayjs-zones": "bun packages/migrate/scripts/test-dayjs-zones.ts",
+    "test:dayjs-suite": "bun packages/migrate/scripts/test-dayjs-suite.ts",
+    "benchmark": "bun run --cwd packages/luxon benchmark",
+    "benchmark:compare": "bun run --cwd packages/luxon benchmark:compare",
+    "benchmark:node": "bun run --cwd packages/luxon benchmark:node",
+    "benchmark:memory": "bun run --cwd packages/luxon benchmark:memory",
+    "benchmark:memory:node": "bun run --cwd packages/luxon benchmark:memory:node",
+    "sync-tests": "bun packages/luxon/scripts/sync-tests.ts",
+    "sync-dayjs": "bun packages/dayjs/scripts/sync.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",

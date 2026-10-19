@@ -1,13 +1,13 @@
 // What replaces each member of momentum's API in native Temporal code. A rule turns one use (a
 // property read, a method call) into the text of a native expression, given the rendered text of
 // its receiver and arguments and what is statically known about them. A rewrite without
-// differences is exact: test/momentum/migrateRules.test.js checks every one against momentum with
+// differences is exact: packages/migrate/test/migrateRules.test.js checks every one against momentum with
 // fast-check. A rewrite that can behave differently lists its differences (./differences.ts), and
 // "none" means there is no native replacement yet.
 //
 // This module is pure: the analyzer (./analyze.ts) builds the context from the TypeScript AST.
 
-import { DateTime, Duration } from "../src/momentum.js";
+import { DateTime, Duration } from "../../luxon/src/momentum.js";
 import type { DifferenceId } from "./differences.js";
 import { defineDayjsRules } from "./dayjs.js";
 

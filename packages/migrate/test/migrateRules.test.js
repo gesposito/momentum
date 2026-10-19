@@ -5,16 +5,10 @@
 // documented difference is reproduced on a known example, and every public member of DateTime
 // and Duration must have an entry in the catalog.
 
-import { DateTime, Duration, Info, Settings } from "../../src/momentum";
-import { fc, nearTransition } from "./fastCheck";
-import {
-  allRules,
-  classNotes,
-  compareOutcome,
-  findRule,
-  valueOfOutcome,
-} from "../../migrate/rules";
-import { differenceIds } from "../../migrate/differences";
+import { DateTime, Duration, Info, Settings } from "../../luxon/src/momentum";
+import { fc, nearTransition } from "../../luxon/test/momentum/fastCheck";
+import { allRules, classNotes, compareOutcome, findRule, valueOfOutcome } from "../src/rules";
+import { differenceIds } from "../src/differences";
 
 const T = globalThis.Temporal;
 
