@@ -45,6 +45,7 @@
     "typecheck": "bun check",
     "test": "TZ=America/New_York LANG=en_US.utf8 jest --coverage",
     "test:polyfill": "MOMENTUM_TEMPORAL=polyfill TZ=America/New_York LANG=en_US.utf8 jest",
+    "test:opt-out": "MOMENTUM_TEMPORAL_NATIVE=false TZ=America/New_York LANG=en_US.utf8 jest",
     "jest": "TZ=America/New_York LANG=en_US.utf8 jest",
     "test:bun": "bun scripts/test-bun.ts",
     "benchmark": "bun run build:js && bun benchmarks/index.ts",

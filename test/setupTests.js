@@ -11,6 +11,13 @@ if (process.env.MOMENTUM_TEMPORAL === "polyfill") {
   require("temporal-polyfill/global");
 }
 
+// MOMENTUM_TEMPORAL_NATIVE=false runs the tests with Luxon's algorithms instead of the
+// Temporal-native core (Settings.temporalNative = false). Tests written for one of the two set it
+// themselves.
+if (process.env.MOMENTUM_TEMPORAL_NATIVE === "false") {
+  require("../src/momentum").Settings.temporalNative = false;
+}
+
 expect.extend({
   toMatchIgnoringWeirdSpaces(received, expected) {
     const replaceNbspReceived = (str) => str.replace(/\s/g, " ");

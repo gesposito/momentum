@@ -1,4 +1,4 @@
-/* global test expect describe */
+/* global test expect describe beforeAll afterAll */
 import { DateTime, Settings, Zone } from "../../src/momentum";
 import { resolveWallClock } from "../../src/impl/temporal";
 import { anyInstant, fc, fieldsAt, wallClockNearTransition } from "./fastCheck.js";
@@ -9,6 +9,16 @@ import { anyInstant, fc, fieldsAt, wallClockNearTransition } from "./fastCheck.j
 // from Luxon's algorithm.
 
 const T = globalThis.Temporal;
+
+// the tests of the Temporal-native core, whatever MOMENTUM_TEMPORAL_NATIVE says
+let temporalNative;
+beforeAll(() => {
+  temporalNative = Settings.temporalNative;
+  Settings.temporalNative = true;
+});
+afterAll(() => {
+  Settings.temporalNative = temporalNative;
+});
 
 function withNow(ts, fn) {
   const old = Settings.now;

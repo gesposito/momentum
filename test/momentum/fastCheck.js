@@ -34,20 +34,21 @@ export const anyInstant = fc
 
 const transitionsByZone = new Map();
 
-/** The instants of a zone's offset transitions between 1800 and 2100. */
-export function transitions(zone) {
-  let list = transitionsByZone.get(zone);
+/** The instants of a zone's offset transitions between two years (1800 and 2100 by default). */
+export function transitions(zone, fromYear = 1800, toYear = 2100) {
+  const key = `${zone} ${fromYear} ${toYear}`;
+  let list = transitionsByZone.get(key);
   if (list === undefined) {
     list = [];
-    const end = Date.UTC(2100, 0, 1);
-    let next = T.Instant.fromEpochMilliseconds(Date.UTC(1800, 0, 1))
+    const end = Date.UTC(toYear, 0, 1);
+    let next = T.Instant.fromEpochMilliseconds(Date.UTC(fromYear, 0, 1))
       .toZonedDateTimeISO(zone)
       .getTimeZoneTransition("next");
     while (next !== null && next.epochMilliseconds < end) {
       list.push(next.epochMilliseconds);
       next = next.getTimeZoneTransition("next");
     }
-    transitionsByZone.set(zone, list);
+    transitionsByZone.set(key, list);
   }
   return list;
 }
@@ -66,8 +67,8 @@ export function nearTransition(zone) {
  * counted from the wall clock just before the transition, so they also land in the gap of a
  * skipped hour and in both halves of a repeated one.
  */
-export function wallClockNearTransition(zone) {
-  const list = transitions(zone);
+export function wallClockNearTransition(zone, fromYear = 1800, toYear = 2100) {
+  const list = transitions(zone, fromYear, toYear);
   if (list.length === 0) return anyInstant.map((ts) => fieldsAt(ts, zone));
   return fc
     .tuple(fc.constantFrom(...list), fc.integer({ min: -120, max: 120 }))

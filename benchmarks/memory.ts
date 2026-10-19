@@ -3,6 +3,7 @@
 //   bun run benchmark:memory                       Bun's native Temporal
 //   bun run benchmark:memory:node                  Node (native Temporal on Node 26)
 //   MOMENTUM_TEMPORAL=polyfill ...                 momentum on top of temporal-polyfill
+//   MOMENTUM_TEMPORAL_NATIVE=false ...             momentum with Luxon's algorithms
 //
 // Reports the heap retained per instance by 100k DateTime, Duration and Interval objects, the
 // heap kept alive by zone caches after touching 100 zones, and the size of the minified bundles.
@@ -33,6 +34,7 @@ const momentum = await import("../build/momentum.js").catch(() => {
   throw new Error("build/momentum.js is missing; run `bun run build` first");
 });
 const luxon = (await import("luxon")) as unknown as typeof momentum;
+if (process.env.MOMENTUM_TEMPORAL_NATIVE === "false") momentum.Settings.temporalNative = false;
 
 type Lib = Pick<typeof momentum, "DateTime" | "Duration" | "Interval" | "Settings">;
 const libs: [string, Lib][] = [
@@ -117,7 +119,8 @@ const engine =
     : typeof globalThis.Temporal === "object"
       ? "native"
       : "none";
-console.log(`runtime: ${runtime}, Temporal: ${engine}\n`);
+const core = momentum.Settings.temporalNative ? "Temporal-native" : "Luxon's algorithms";
+console.log(`runtime: ${runtime}, Temporal: ${engine}, momentum core: ${core}\n`);
 
 const perInstanceRows: Record<string, Record<string, string>> = {};
 for (const [name, lib] of libs) {

@@ -10,6 +10,8 @@ import {
 import Invalid from "./invalid.js";
 import { ConflictingSpecificationError } from "../errors.js";
 import { isRangeError, plainDate } from "./temporal.js";
+import { dayOfWeek as civilDayOfWeek } from "./calendar.js";
+import { isTemporalNative } from "./mode.js";
 import type { PlainDate } from "./temporal.js";
 import type { GregorianDateTime } from "../types.js";
 import type { TimeObject } from "./util.js";
@@ -28,6 +30,23 @@ export interface OrdinalDateTime extends TimeObject {
 export interface WeekSettingsPair {
   minDaysInFirstWeek: number;
   startOfWeek: number;
+}
+
+// Luxon's ordinal arithmetic, used when Settings.temporalNative is false
+const nonLeapLadder = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
+  leapLadder = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
+
+function computeOrdinal(year: number, month: number, day: number): number {
+  return day + (daysInYear(year) === 366 ? leapLadder : nonLeapLadder)[month - 1];
+}
+
+// the month and day of an ordinal; the day may lie past the end of the month, which Luxon lets
+// Date.UTC carry (as msFromCivil does)
+function uncomputeOrdinal(year: number, ordinal: number): { month: number; day: number } {
+  const table = daysInYear(year) === 366 ? leapLadder : nonLeapLadder,
+    month0 = table.findIndex((i) => i < ordinal),
+    day = ordinal - table[month0];
+  return { month: month0 + 1, day };
 }
 
 function unitOutOfRange(unit: string, value: unknown): Invalid {
@@ -49,6 +68,7 @@ function cycleShift(year: number): number {
  * the year is not a finite number (or too large to be an exact integer).
  */
 export function dayOfWeek(year: number, month: number, day: number): number {
+  if (!isTemporalNative()) return civilDayOfWeek(year, month, day);
   if (!Number.isFinite(year)) return NaN;
   const y = Math.trunc(year);
   try {
@@ -143,6 +163,7 @@ export function gregorianToWeek(
   minDaysInFirstWeek = 4,
   startOfWeek = 1
 ): WeekDateTime {
+  if (!isTemporalNative()) return civilWeek(gregObj, minDaysInFirstWeek, startOfWeek);
   const date = isoDate(gregObj);
   return date === null
     ? { weekYear: NaN, weekNumber: NaN, weekday: NaN, ...timeObject(gregObj) }
@@ -171,20 +192,58 @@ export function weekToGregorian(
     year = weekYear;
   }
 
-  return { ...ordinalToDate(year, ordinal), ...timeObject(weekData) };
+  return { ...dateOfOrdinal(year, ordinal), ...timeObject(weekData) };
 }
 
 export function gregorianToOrdinal(gregData: GregorianDateTime): OrdinalDateTime {
-  const date = isoDate(gregData);
-  return {
-    year: gregData.year,
-    ordinal: date === null ? NaN : date.dayOfYear,
-    ...timeObject(gregData),
-  };
+  const { year, month, day } = gregData;
+  let ordinal: number;
+  if (isTemporalNative()) {
+    const date = isoDate(gregData);
+    ordinal = date === null ? NaN : date.dayOfYear;
+  } else {
+    ordinal = computeOrdinal(year, month, day);
+  }
+  return { year, ordinal, ...timeObject(gregData) };
 }
 
 export function ordinalToGregorian(ordinalData: OrdinalDateTime): GregorianDateTime {
-  return { ...ordinalToDate(ordinalData.year, ordinalData.ordinal), ...timeObject(ordinalData) };
+  return { ...dateOfOrdinal(ordinalData.year, ordinalData.ordinal), ...timeObject(ordinalData) };
+}
+
+function dateOfOrdinal(
+  year: number,
+  ordinal: number
+): { year: number; month: number; day: number } {
+  return isTemporalNative()
+    ? ordinalToDate(year, ordinal)
+    : { year, ...uncomputeOrdinal(year, ordinal) };
+}
+
+// Luxon's week numbering of a calendar date (Settings.temporalNative = false)
+function civilWeek(
+  gregObj: GregorianDateTime,
+  minDaysInFirstWeek: number,
+  startOfWeek: number
+): WeekDateTime {
+  const { year, month, day } = gregObj,
+    ordinal = computeOrdinal(year, month, day),
+    weekday = isoWeekdayToLocal(civilDayOfWeek(year, month, day), startOfWeek);
+
+  let weekNumber = Math.floor((ordinal - weekday + 14 - minDaysInFirstWeek) / 7),
+    weekYear;
+
+  if (weekNumber < 1) {
+    weekYear = year - 1;
+    weekNumber = weeksInWeekYear(weekYear, minDaysInFirstWeek, startOfWeek);
+  } else if (weekNumber > weeksInWeekYear(year, minDaysInFirstWeek, startOfWeek)) {
+    weekYear = year + 1;
+    weekNumber = 1;
+  } else {
+    weekYear = year;
+  }
+
+  return { weekYear, weekNumber, weekday, ...timeObject(gregObj) };
 }
 
 /**

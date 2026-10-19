@@ -12,6 +12,8 @@ import {
   isNumber,
   bestBy,
   daysInMonth,
+  daysInYear,
+  isLeapYear,
   weeksInWeekYear,
   normalizeObject,
   roundTo,
@@ -64,6 +66,8 @@ import {
   zonedDateTime,
 } from "./impl/temporal.js";
 import type { Instant, PlainDate, PlainDateTime, PlainTime, ZonedDateTime } from "./impl/temporal.js";
+import { civilFromMs, msFromCivil } from "./impl/calendar.js";
+import { isTemporalNative } from "./impl/mode.js";
 import type Zone from "./zone.js";
 import type {
   DateObjectUnits,
@@ -177,7 +181,7 @@ let derivedSoFar: (dt: DateTime) => { c: GregorianDateTime | null; o: number | n
  */
 function possiblyCachedWeekData(dt: DateTime): WeekDateTime {
   if (dt.weekData === null) {
-    dt.weekData = plainDateToWeek(plainDateOf(dt), fieldsOf(dt));
+    dt.weekData = weekDataOf(dt);
   }
   return dt.weekData;
 }
@@ -187,14 +191,22 @@ function possiblyCachedWeekData(dt: DateTime): WeekDateTime {
  */
 function possiblyCachedLocalWeekData(dt: DateTime): WeekDateTime {
   if (dt.localWeekData === null) {
-    dt.localWeekData = plainDateToWeek(
-      plainDateOf(dt),
-      fieldsOf(dt),
-      dt.loc.getMinDaysInFirstWeek(),
-      dt.loc.getStartOfWeek()
-    );
+    dt.localWeekData = weekDataOf(dt, dt.loc.getMinDaysInFirstWeek(), dt.loc.getStartOfWeek());
   }
   return dt.localWeekData;
+}
+
+// week data of a valid DateTime under the given week settings: from its Temporal.PlainDate, or
+// with Luxon's arithmetic when Settings.temporalNative is false
+function weekDataOf(dt: DateTime, minDaysInFirstWeek = 4, startOfWeek = 1): WeekDateTime {
+  return isTemporalNative()
+    ? plainDateToWeek(plainDateOf(dt), fieldsOf(dt), minDaysInFirstWeek, startOfWeek)
+    : gregorianToWeek(fieldsOf(dt), minDaysInFirstWeek, startOfWeek);
+}
+
+// day of the year of a valid DateTime
+function ordinalOf(dt: DateTime): number {
+  return isTemporalNative() ? plainDateOf(dt).dayOfYear : gregorianToOrdinal(fieldsOf(dt)).ordinal;
 }
 
 // clone really means, "make a new object with these modifications". all "setters" really use this
@@ -219,8 +231,9 @@ function clone(inst: DateTime, alts: CloneAlts): DateTime {
 
 // find the right offset a given local time. The o input is our guess, which determines which
 // offset we'll pick in ambiguous cases (e.g. there are two 3 AMs b/c Fallback DST).
-// Only used for custom zones, which Temporal cannot represent; built-in zones are resolved by
-// Temporal (see resolveWallClock).
+// It resolves custom zones, which only report the offset of an instant, and every zone when
+// Settings.temporalNative is false; Temporal resolves built-in zones otherwise (see
+// resolveWallClock).
 function fixOffset(localTS: number, o: number, tz: Zone): [number, number, boolean] {
   // Our UTC time is just a guess because our offset is just a guess
   let utcGuess = localTS - o * 60 * 1000;
@@ -250,12 +263,29 @@ function fixOffset(localTS: number, o: number, tz: Zone): [number, number, boole
 // representable. Luxon computes local times with Date, so the local time must be within Date's
 // range as well as the instant
 function fieldsAtOffset(ts: number, offset: number): GregorianDateTime | null {
-  if (!isRepresentableTs(ts + offset * 60 * 1000)) return null;
+  const localTS = ts + offset * 60 * 1000;
+  if (!isRepresentableTs(localTS)) return null;
+  if (!isTemporalNative()) return civilFromMs(localTS);
   try {
     return wallClockAtOffset(ts, offset);
   } catch (e) {
     if (!isRangeError(e)) throw e;
     return null;
+  }
+}
+
+// the epoch milliseconds of wall-clock fields read as UTC (Luxon's "local timestamp"), with
+// out-of-range fields rolled over; NaN outside Date's range, like the Date.UTC call of Luxon
+function localMillis(fields: GregorianDateTime): number {
+  if (!isTemporalNative()) {
+    const localTS = msFromCivil(fields);
+    return isRepresentableTs(localTS) ? localTS : NaN;
+  }
+  try {
+    return utcMillis(fields);
+  } catch (e) {
+    if (!isRangeError(e)) throw e;
+    return NaN;
   }
 }
 
@@ -270,15 +300,18 @@ function resolveFields(
   try {
     const tz = temporalZoneId(zone);
     let resolved: ResolvedLocal;
-    if (tz !== null) {
+    if (tz !== null && isTemporalNative()) {
       const { ts, o, fields: c, wasHole } = resolveWallClock(fields, tz, offsetGuess);
       resolved = { ts, o, c, wasHole };
     } else {
-      // custom zones only report the offset of an instant: Luxon's fixOffset, starting from the
-      // instant the wall clock would have in UTC
-      const [ts, o, wasHole] = fixOffset(utcMillis(fields), offsetGuess, zone);
+      // Luxon's fixOffset, starting from the instant the wall clock would have in UTC: the only
+      // way for custom zones, which just report the offset of an instant, and Luxon's way for
+      // every zone when Settings.temporalNative is false
+      const [ts, o, wasHole] = fixOffset(localMillis(fields), offsetGuess, zone);
       if (!isRepresentableTs(ts) || !Number.isFinite(o)) return null;
-      resolved = { ts, o, c: wallClockAtOffset(ts, o), wasHole };
+      const c = fieldsAtOffset(ts, o);
+      if (c === null) return null;
+      resolved = { ts, o, c, wasHole };
     }
     // Luxon computes local times with Date, so the local time must be within Date's range too
     return isRepresentableTs(resolved.ts + resolved.o * 60 * 1000) ? resolved : null;
@@ -288,19 +321,15 @@ function resolveFields(
   }
 }
 
-// getPossibleOffsets() for custom zones, which only report the offset of an instant: Luxon's
-// algorithm, probing the zone's offsets a day before and a day after the wall clock
+// getPossibleOffsets() with Luxon's algorithm, probing the zone's offsets a day before and a day
+// after the wall clock: for custom zones, which only report the offset of an instant, and for
+// every zone when Settings.temporalNative is false
 function possibleOffsetsFromZoneOffsets(dt: DateTime): DateTime[] {
   const dayMs = 86400000,
     minuteMs = 60000,
-    zone = dt.zone;
-  let localTS: number;
-  try {
-    localTS = utcMillis(fieldsOf(dt));
-  } catch (e) {
-    if (!isRangeError(e)) throw e;
-    return [dt];
-  }
+    zone = dt.zone,
+    localTS = localMillis(fieldsOf(dt));
+  if (Number.isNaN(localTS)) return [dt];
   const oEarlier = zone.offset(localTS - dayMs),
     oLater = zone.offset(localTS + dayMs),
     o1 = zone.offset(localTS - oEarlier * minuteMs),
@@ -342,21 +371,26 @@ const unknownFields: GregorianDateTime = {
 // time of day; null when not representable
 function shiftDate(inst: DateTime, months: number, days: number): ResolvedLocal | null {
   const c = fieldsOf(inst);
-  let date = plainDateOf(inst);
-  try {
-    // the day is clamped to the length of the target month (Temporal's "constrain" overflow),
-    // which is what Luxon does before it adds days
-    if (months !== 0) date = date.add({ months });
-    if (days !== 0) date = date.add({ days });
-  } catch (e) {
-    if (!isRangeError(e)) throw e;
-    return null;
+  let shifted: { year: number; month: number; day: number };
+  if (isTemporalNative()) {
+    let date = plainDateOf(inst);
+    try {
+      // the day is clamped to the length of the target month (Temporal's "constrain" overflow),
+      // which is what Luxon does before it adds days
+      if (months !== 0) date = date.add({ months });
+      if (days !== 0) date = date.add({ days });
+    } catch (e) {
+      if (!isRangeError(e)) throw e;
+      return null;
+    }
+    shifted = { year: date.year, month: date.month, day: date.day };
+  } else {
+    // Luxon's arithmetic: the month may overflow and the day may pass the end of the month, the
+    // resolution carries both
+    const month = c.month + months;
+    shifted = { year: c.year, month, day: Math.min(c.day, daysInMonth(c.year, month)) + days };
   }
-  return resolveFields(
-    { ...c, year: date.year, month: date.month, day: date.day },
-    offsetOf(inst),
-    inst.zone
-  );
+  return resolveFields({ ...c, ...shifted }, offsetOf(inst), inst.zone);
 }
 
 // create a new DT instance by adding a duration, adjusting for DSTs
@@ -817,7 +851,7 @@ export default class DateTime {
   // assigns the module's accessors for the private fields (see fieldsOf)
   static #installAccessors(): void {
     const fresh = (dt: DateTime): { c: GregorianDateTime; o: number } => {
-      if (dt.tz === null) {
+      if (dt.tz === null || !isTemporalNative()) {
         const o = dt.zone.offset(dt.ts);
         return { c: fieldsAtOffset(dt.ts, o) as GregorianDateTime, o };
       }
@@ -879,8 +913,9 @@ export default class DateTime {
           // the caller already resolved the calendar fields and offset for this instant
           c = config.c;
           o = config.o;
-        } else if (tz === null) {
-          // custom zones have no Temporal time zone: their offset at this instant places it
+        } else if (tz === null || !isTemporalNative()) {
+          // up front from the zone's offset at this instant: custom zones have no Temporal time
+          // zone, and Luxon's algorithms (Settings.temporalNative = false) compute eagerly
           o = zone.offset(this.ts);
           c = Number.isFinite(o) ? fieldsAtOffset(this.ts, o) : null;
         } else if (Math.abs(this.ts) > MAX_EPOCH_MS - 86400000) {
@@ -1638,7 +1673,7 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25).ordinal //=> 145
    */
   get ordinal(): number {
-    return this.isValid ? plainDateOf(this).dayOfYear : NaN;
+    return this.isValid ? ordinalOf(this) : NaN;
   }
 
   /**
@@ -1747,7 +1782,7 @@ export default class DateTime {
     if (!this.isValid || this.isOffsetFixed) {
       return [this];
     }
-    if (this.tz === null) {
+    if (this.tz === null || !isTemporalNative()) {
       return possibleOffsetsFromZoneOffsets(this);
     }
     const c = fieldsOf(this);
@@ -1776,7 +1811,8 @@ export default class DateTime {
    * @example DateTime.local(2013).isInLeapYear //=> false
    */
   get isInLeapYear(): boolean {
-    return this.isValid && plainDateOf(this).inLeapYear;
+    if (!this.isValid) return false;
+    return isTemporalNative() ? plainDateOf(this).inLeapYear : isLeapYear(fieldsOf(this).year);
   }
 
   /**
@@ -1786,7 +1822,10 @@ export default class DateTime {
    */
   get daysInMonth(): number {
     // Luxon's arithmetic yields undefined for an invalid DateTime
-    return this.isValid ? plainDateOf(this).daysInMonth : (undefined as unknown as number);
+    if (!this.isValid) return undefined as unknown as number;
+    if (isTemporalNative()) return plainDateOf(this).daysInMonth;
+    const { year, month } = fieldsOf(this);
+    return daysInMonth(year, month);
   }
 
   /**
@@ -1795,7 +1834,8 @@ export default class DateTime {
    * @example DateTime.local(2013).daysInYear //=> 365
    */
   get daysInYear(): number {
-    return this.isValid ? plainDateOf(this).daysInYear : NaN;
+    if (!this.isValid) return NaN;
+    return isTemporalNative() ? plainDateOf(this).daysInYear : daysInYear(fieldsOf(this).year);
   }
 
   /**
@@ -1961,7 +2001,7 @@ export default class DateTime {
     if (settingWeekStuff) {
       mixed = weekToGregorian(
         {
-          ...plainDateToWeek(plainDateOf(this), c, minDaysInFirstWeek, startOfWeek),
+          ...weekDataOf(this, minDaysInFirstWeek, startOfWeek),
           ...normalized,
         } as WeekDateTime,
         minDaysInFirstWeek,
@@ -1970,7 +2010,7 @@ export default class DateTime {
     } else if (!isUndefined(normalized.ordinal)) {
       mixed = ordinalToGregorian({
         ...c,
-        ordinal: plainDateOf(this).dayOfYear,
+        ordinal: ordinalOf(this),
         ...normalized,
       } as OrdinalDateTime);
     } else {

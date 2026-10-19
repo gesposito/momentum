@@ -12,12 +12,16 @@ momentum exposes the same `DateTime`, `Duration`, `Interval`, `Info`, `Settings`
 classes as [Luxon](https://moment.github.io/luxon) 3.7, with the same methods, options, parsing
 tokens, formatting tokens and validity semantics. It is verified against Luxon's own test suite
 (1,200+ tests, vendored with only mechanical rewrites), an API-surface snapshot generated from
-Luxon's code, and parity tests for Luxon behaviour that its suite leaves unchecked. Under the
-hood, the time zone machinery Luxon built on `Date` and
-`Intl.DateTimeFormat` tricks is replaced by Temporal: UTC offsets, DST transitions and zone
-identifiers come from `Temporal.ZonedDateTime`, with a transition-window cache so repeated
-lookups cost nothing. Pure Gregorian calendar arithmetic uses closed-form algorithms, because
-materializing Temporal objects for every field read is slow in today's engines.
+Luxon's code, and parity tests for Luxon behaviour that its suite leaves unchecked.
+
+Under the hood, Temporal does the work Luxon built on `Date` and `Intl.DateTimeFormat` tricks. A
+DateTime is an instant in a Temporal time zone: its calendar fields are read from a
+`Temporal.ZonedDateTime` when first needed, wall-clock times are resolved by Temporal's
+disambiguation, calendar arithmetic and week numbers come from `Temporal.PlainDate`, and offsets
+are cached per transition window, so repeated zone lookups cost nothing. Reading fields through
+Temporal objects is still slow in today's engines, so `Settings.temporalNative = false` opts out
+to Luxon's own algorithms, fed with the same Temporal offsets (see
+[Opting out](#opting-out-of-the-temporal-native-core)).
 
 The git history tells the story step by step: it starts from a verbatim copy of Luxon and every
 commit is a small, test-verified refactor. Luxon's own history is merged in underneath the
@@ -56,15 +60,15 @@ Everything you know from Luxon, including:
 - output: `toISO()`, `toFormat()`, `toLocaleString()`, `toRelative()`, `toHuman()`, presets like `DateTime.DATETIME_FULL`
 - `Duration` with Luxon's casual/longterm conversion matrices, `Interval` algebra, `Info` listers
 - validity (`isValid`, `invalidReason`, `Settings.throwOnInvalid`), `Settings.defaultZone`,
-  custom `Zone` implementations, DST gap and overlap resolution (Luxon's own algorithm, fed by
-  Temporal offsets)
+  custom `Zone` implementations, and Luxon's rules for DST gaps and overlaps: a skipped time moves
+  forward, an ambiguous one keeps the offset it is guessed to have
 
 Types are generated from the source, so there is no separate `@types` package to install.
 
 ## What Temporal adds
 
-A few extra methods bridge the two worlds; with `TemporalUnavailableError`, they are the only
-additions to Luxon's API:
+A few extra methods bridge the two worlds. With `TemporalUnavailableError` and
+`Settings.temporalNative`, they are the only additions to Luxon's API:
 
 | Method | Returns |
 | --- | --- |
@@ -85,8 +89,13 @@ date in 1800 Rome has an offset of 49.93 minutes, just like Luxon reports from I
 
 ## Known differences
 
-Two corner cases behave differently from Luxon:
+A few corner cases behave differently from Luxon:
 
+- Luxon resolves a wall-clock time with a two-step search from a guessed offset, which goes wrong
+  where the guess is far from the offsets around a transition. Seen from today, it reports
+  existing times as skipped, such as 02:30 on 1979-10-01 in Kiritimati or 01:30 on 2010-09-26 in
+  Samoa, and it can take the later instant of an ambiguous time. Temporal's disambiguation gets
+  these right; `Settings.temporalNative = false` reproduces Luxon's answers.
 - On Node.js, a POSIX `TZ` value such as `GMT+3` means three hours behind UTC to `Date` but three
   hours ahead to `Intl` and Temporal. Luxon names the zone `+03:00` yet computes with `Date`'s
   UTC−3; momentum computes with UTC+3, matching the name.
@@ -94,31 +103,58 @@ Two corner cases behave differently from Luxon:
   while its local time does not, such as `275760-09-12T23:00` at UTC−2. momentum needs the instant
   itself to be in range, because Temporal's range ends at the same instant.
 
+## Opting out of the Temporal-native core
+
+```js
+import { Settings } from "momentum";
+
+Settings.temporalNative = false;
+```
+
+Every later computation then uses Luxon's own algorithms, fed with the same Temporal offsets:
+calendar fields computed up front with closed-form arithmetic, and wall-clock times resolved with
+Luxon's offset search. DateTimes created earlier keep their values. Both cores pass the whole
+test suite, and property tests check that they agree everywhere but in the DST cases above. The
+opt-out trades Temporal's disambiguation for speed on today's engines, as the table below shows.
+The Temporal-native core is where momentum is heading; the opt-out can go once engines make
+Temporal's field reads cheap.
+
 ## Performance and footprint
 
-Measured with Luxon's own benchmark cases against the built bundle (`bun run benchmark:node`,
-`bun run benchmark:compare`, `bun run benchmark:memory`), each runtime with its native Temporal:
+Measured with Luxon's own benchmark cases, plus three that read the fields of a fresh DateTime,
+against the built bundle (`bun run benchmark:node`, `bun run benchmark:compare`,
+`bun run benchmark:memory`), each runtime with its native Temporal. Ratios are Luxon's time over
+momentum's, so higher is faster; "opt-out" is `Settings.temporalNative = false`.
 
-| Case (ratio to Luxon, higher is faster) | Node 26.12 | Bun 1.4.3 |
-| --- | --- | --- |
-| `DateTime.now()` | 1.4× | 0.85× |
-| `DateTime.local(y, m, d)` | 1.6× | 0.7× |
-| `DateTime.fromISO`, `fromSQL`, `fromFormat` | 1.0–1.2× | 0.8–0.9× |
-| `DateTime.local(..., { zone })` | 10.9× | 9.8× |
-| `DateTime.fromFormatParser(..., { zone })` | 4.5× | 4.0× |
-| `DateTime#setZone` | 21.7× | 15.4× |
-| `DateTime#plus`, `toISO`, `toLocaleString`, `toRelativeCalendar`, `Info.*` | 1.0–1.2× | 1.0–1.2× |
+| Case | Node 26.12 | Node, opt-out | Bun 1.4.3 | Bun, opt-out |
+| --- | --- | --- | --- | --- |
+| `DateTime.now()` | 2.4× | 1.2× | 1.7× | 0.8× |
+| `DateTime.local(y, m, d)` | 0.6× | 1.6× | 0.3× | 0.8× |
+| `DateTime.fromObject({}, { locale })` | 0.3× | 1.1× | 0.2× | 0.7× |
+| `DateTime.fromISO`, `fromSQL`, `fromFormat` | 0.7–0.8× | 1.0–1.2× | 0.6–0.9× | 0.9–1.0× |
+| `DateTime.local(..., { zone })` | 3.5× | 11.0× | 3.3× | 9.0× |
+| `DateTime.fromFormatParser(..., { zone })` | 3.0× | 4.7× | 2.6× | 4.0× |
+| `DateTime#setZone` | 44.9× | 20.4× | 28.8× | 14.3× |
+| `DateTime#setZone().hour` | 3.7× | 21.6× | 4.3× | 13.8× |
+| `DateTime.now().toISO()` | 0.4× | 1.1× | 0.35× | 0.8× |
+| `plus`, `toISO`, `toLocaleString`, `toRelativeCalendar`, `Info.*` | 0.7–1.3× | 1.0–1.2× | 0.7–1.3× | 0.7–1.1× |
 
-Anything involving an explicit IANA zone is much faster because Temporal answers offset queries
-directly instead of through `Intl.DateTimeFormat`. On Node with `temporal-polyfill` forced, the
-numbers are within a few percent of native, since the transition-window cache keeps the polyfill
-out of the hot paths.
+The Temporal-native core derives fields only when they are read, so creating a DateTime from an
+instant or moving it to another zone costs well under a microsecond. Anything with an explicit
+IANA zone beats Luxon in both cores, because Temporal answers offset queries directly instead of
+through `Intl.DateTimeFormat`. Building a DateTime from wall-clock fields, and reading the fields
+of a fresh one, cost more than in Luxon: about two thirds of that time is spent in the engines'
+own `Temporal.PlainDateTime` and `Temporal.ZonedDateTime` constructors and field getters, which
+the opt-out avoids. On temporal-polyfill the gap is wider: creating a DateTime from numbers and
+reading a few fields takes about 10 µs with the Temporal-native core and under 1 µs with the
+opt-out, which the transition-window cache keeps within a few percent of native. Runtimes that
+need the polyfill are better served by the opt-out.
 
-Memory: instances have the same shape and retain the same memory as Luxon's (about 690 bytes per
-`DateTime`). After touching 100 zones, momentum's offset windows retain 20–90 kB where Luxon's
-per-zone `Intl.DateTimeFormat` cache costs 6 MB of ICU memory on Bun and 16 MB of resident memory
-on Node. Minified bundles are the same size: 77.7 kB (24.2 kB gzipped) against Luxon's 79.8 kB
-(24.1 kB gzipped).
+Memory: until its fields are read, a DateTime retains about 610 bytes with the Temporal-native
+core; with the opt-out it retains about 700, like Luxon's 680–690. After touching 100 zones,
+momentum's offset windows retain 13–100 kB, where Luxon's per-zone `Intl.DateTimeFormat` cache
+costs 5.9 MB of ICU memory on Bun and 5.3 MB of resident memory on Node. The minified bundle,
+with both cores, is 82.5 kB (25.9 kB gzipped) against Luxon's 79.8 kB (24.1 kB gzipped).
 
 ## Package shape
 
@@ -135,6 +171,7 @@ Everything runs through Bun:
 bun install
 bun run test            # Luxon's suite on Jest; Node's native Temporal, or temporal-polyfill on older Node
 bun run test:polyfill   # the same suite with the polyfill forced
+bun run test:opt-out    # the same suite with Settings.temporalNative = false
 bun run test:bun        # the same suite on bun test, on Bun's native Temporal
 bun check               # type check
 bun run build           # bundles + declarations
@@ -149,7 +186,9 @@ bun run sync-tests      # re-vendor the tests from a luxon checkout (default ../
 The tests come in three groups. Luxon's suite fills `test/`; `bun run sync-tests` vendors it and
 it is never edited by hand. `test/parity/` checks Luxon behaviour that its suite does not cover,
 with every expectation taken from Luxon 3.7.2. `test/momentum/` covers what momentum adds: the
-Temporal interop, the polyfill entry point, the offset cache and the API-surface snapshot.
+Temporal interop, the polyfill entry point, the offset cache, the two cores and the API-surface
+snapshot. `MOMENTUM_TEMPORAL_NATIVE=false` runs any of the test and benchmark scripts with the
+opt-out; tests written for one core set it themselves.
 
 Randomized checks are [fast-check](https://fast-check.dev) properties, so a failure shrinks to a
 minimal counterexample and prints the seed and path that replay it. Each property runs 100 times

@@ -7,6 +7,7 @@ import type Zone from "./zone.js";
 import { normalizeZone } from "./impl/zoneUtil.js";
 import { validateWeekSettings } from "./impl/util.js";
 import { resetDigitRegexCache } from "./impl/digits.js";
+import { isTemporalNative, setTemporalNative } from "./impl/mode.js";
 import type { WeekSettings, ZoneLike } from "./types.js";
 
 let now: () => number = () => Date.now(),
@@ -130,6 +131,27 @@ export default class Settings {
    */
   static set twoDigitCutoffYear(cutoffYear: number) {
     twoDigitCutoffYear = cutoffYear % 100;
+  }
+
+  /**
+   * Get whether DateTimes are computed with Temporal objects (the default) rather than with
+   * Luxon's own algorithms.
+   */
+  static get temporalNative(): boolean {
+    return isTemporalNative();
+  }
+
+  /**
+   * Set whether DateTimes are computed with Temporal objects. With `true`, the default, calendar
+   * fields come from `Temporal.ZonedDateTime`, wall-clock times are resolved with Temporal's
+   * disambiguation and calendar arithmetic uses `Temporal.PlainDate`. With `false`, momentum uses
+   * Luxon's own algorithms, fed with Temporal's offsets: Luxon's exact results in the rare DST
+   * cases where the two differ, and faster creation on today's engines. The choice applies to
+   * every computation made afterwards; DateTimes already created keep their values.
+   * @example Settings.temporalNative = false // use Luxon's algorithms
+   */
+  static set temporalNative(value: boolean) {
+    setTemporalNative(value);
   }
 
   /**

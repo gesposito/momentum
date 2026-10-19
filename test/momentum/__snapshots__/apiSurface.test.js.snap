@@ -316,6 +316,7 @@ exports[`the public API surface matches Luxon's 1`] = `
       "defaultZone",
       "now",
       "resetCaches",
+      "temporalNative",
       "throwOnInvalid",
       "twoDigitCutoffYear",
     ],

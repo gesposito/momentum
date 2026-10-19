@@ -5,6 +5,7 @@
 //   bun run benchmark:compare               the same cases for momentum and luxon side by side
 //   bun run benchmark:node                  the comparison on Node (node --expose-gc for GC stats)
 //   MOMENTUM_TEMPORAL=polyfill ...          momentum on top of temporal-polyfill
+//   MOMENTUM_TEMPORAL_NATIVE=false ...      momentum with Luxon's algorithms (Settings.temporalNative)
 
 import { bench, group, run, summary } from "mitata";
 
@@ -16,6 +17,10 @@ if (process.env.MOMENTUM_TEMPORAL === "polyfill") {
 const momentum = await import("../build/momentum.js").catch(() => {
   throw new Error("build/momentum.js is missing; run `bun run build` first");
 });
+if (process.env.MOMENTUM_TEMPORAL_NATIVE === "false") momentum.Settings.temporalNative = false;
+console.log(
+  `momentum core: ${momentum.Settings.temporalNative ? "Temporal-native" : "Luxon's algorithms"}\n`
+);
 
 type Lib = Pick<typeof momentum, "DateTime" | "Settings" | "Info">;
 
@@ -86,6 +91,11 @@ function dateTimeCases({ DateTime, Settings }: Lib): [string, () => unknown][] {
       "DateTime#toRelativeCalendar",
       () => dt.toRelativeCalendar({ base: DateTime.now(), locale: "fi" }),
     ],
+    // not in Luxon's suite: these read the fields of a fresh DateTime, which the Temporal-native
+    // core derives only when they are read
+    ["DateTime.now().toISO()", () => DateTime.now().toISO()],
+    ["DateTime.fromISO().toISO()", () => DateTime.fromISO("1982-05-25T09:10:11.445Z").toISO()],
+    ["DateTime#setZone().hour", () => dt.setZone("America/Los_Angeles").hour],
   ];
 }
 
