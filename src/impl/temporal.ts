@@ -110,6 +110,14 @@ export function offsetMinutes(zdt: ZonedDateTime): number {
 let inspectedApi: TemporalApi | null = null;
 let readThroughPlainDateTime = true;
 
+function isNativeCode(fn: unknown): boolean {
+  try {
+    return Function.prototype.toString.call(fn).includes("[native code]");
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Calendar fields of the wall clock of a ZonedDateTime.
  */
@@ -117,9 +125,7 @@ export function wallClock(zdt: ZonedDateTime): GregorianDateTime {
   const api = temporal();
   if (api !== inspectedApi) {
     inspectedApi = api;
-    readThroughPlainDateTime = Function.prototype.toString
-      .call(api.ZonedDateTime)
-      .includes("[native code]");
+    readThroughPlainDateTime = isNativeCode(api.ZonedDateTime);
   }
   const p = readThroughPlainDateTime ? zdt.toPlainDateTime() : zdt;
   return {
