@@ -43,6 +43,7 @@
     "build:js": "bun scripts/build.ts",
     "build:types": "tsc -p tsconfig.build.json",
     "typecheck": "bun check && bun check -p migrate",
+    "migrate": "bun migrate/cli.ts",
     "test": "TZ=America/New_York LANG=en_US.utf8 jest --coverage",
     "test:polyfill": "MOMENTUM_TEMPORAL=polyfill TZ=America/New_York LANG=en_US.utf8 jest",
     "test:opt-out": "MOMENTUM_TEMPORAL_NATIVE=false TZ=America/New_York LANG=en_US.utf8 jest",

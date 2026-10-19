@@ -103,6 +103,15 @@ A few corner cases behave differently from Luxon:
   while its local time does not, such as `275760-09-12T23:00` at UTC−2. momentum needs the instant
   itself to be in range, because Temporal's range ends at the same instant.
 
+## Moving on to native Temporal
+
+momentum is meant to be temporary. `bun run migrate check <project>` finds every use of momentum
+(or Luxon) with TypeScript's type checker and reports whether the rewrites with a native Temporal
+replacement complete the switch, listing what is left when they don't; `bun run migrate apply`
+writes them. Rewrites are applied by default only when they are exact, proven against momentum by
+property tests; those that differ in documented corner cases wait for `--accept`. See
+[docs/migrate.md](docs/migrate.md).
+
 ## Opting out of the Temporal-native core
 
 ```js
@@ -181,6 +190,7 @@ bun run benchmark:node      # side by side with luxon, on Node
 bun run benchmark:memory    # retained memory and bundle size, side by side with luxon (Bun)
 bun run benchmark:memory:node
 bun run sync-tests      # re-vendor the tests from a luxon checkout (default ../luxon)
+bun run migrate check <project>   # how far a project is from native Temporal (docs/migrate.md)
 ```
 
 The tests come in three groups. Luxon's suite fills `test/`; `bun run sync-tests` vendors it and

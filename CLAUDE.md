@@ -25,6 +25,7 @@ shows the migration steps) and migrates it one verified step at a time.
 - `bun run build` — `scripts/build.ts` (Bun.build, ESM, `temporal-polyfill` external) + `tsc -p tsconfig.build.json` for `build/types`
 - `bun run benchmark` / `benchmark:compare` / `benchmark:node` / `benchmark:memory` / `benchmark:memory:node` — mitata port of luxon's benchmarks against the built bundle (they build first), optionally against luxon, on Bun or Node; retained memory and bundle size
 - `bun run sync-tests [path]` — re-vendor luxon's tests (default `../luxon`); applies the rewrites documented at the top of `scripts/sync-tests.ts`
+- `bun run migrate check|apply|rules [project]` — `migrate/`: the migration tool to native Temporal (docs/migrate.md). TypeScript 7's async compiler API (`typescript/unstable/async`, works under Bun) finds uses by type; `migrate/rules.ts` is the catalog of replacements, `migrate/differences.ts` the documented differences
 
 ## Conventions
 
@@ -35,6 +36,6 @@ shows the migration steps) and migrates it one verified step at a time.
 - New tests go in `test/parity/` when they pin luxon behaviour that luxon's own suite doesn't check (take every expectation from luxon 3.7.2, the `luxon` devDependency), and in `test/momentum/` when they cover what momentum adds (Temporal interop, polyfill entry, offset cache, the two cores, API-surface snapshot). Tests written for one core set `Settings.temporalNative` themselves (`temporalCore.test.js`, `parity/dstResolution.test.js`); `optOut.test.js` holds the properties that the cores agree.
 - Randomized tests are fast-check properties built on `test/momentum/fastCheck.js` (shared configuration and generators: instants, wall clocks near transitions); never `Math.random`. `FC_NUM_RUNS=20000` fuzzes longer; a failure prints `{ seed, path }`, replayed with `FC_SEED`/`FC_PATH`.
 - A workaround for an upstream bug links its issue in a comment and has a row in `docs/upstream.md` saying what to delete when the fix ships; remove both together.
-- The migration catalog (`migrate/rules.ts`) describes the default core. A rewrite without differences must be exact: add a property test to `test/momentum/migrateRules.test.js` that evaluates its text against momentum. A new difference needs a reproducing example there too, and every public DateTime and Duration member needs an entry (a coverage test checks it).
+- The migration catalog (`migrate/rules.ts`) describes the default core. A rewrite without differences must be exact: add a property test to `test/momentum/migrateRules.test.js` that evaluates its text against momentum. A new difference needs a reproducing example there too, and every public DateTime and Duration member needs an entry (a coverage test checks it). Fixture projects for the CLI live in `test/momentum/fixtures/migrate` with reviewed outputs in `expected/`.
 - Adding or removing a public member requires updating the API snapshot deliberately (`bunx jest test/momentum/apiSurface.test.js -u`).
 - Public JSDoc comes from luxon; keep it when touching public methods, it ends up in the `.d.ts` files.
