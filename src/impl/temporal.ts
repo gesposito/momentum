@@ -90,24 +90,38 @@ function offsetString(minutes: number): string {
 }
 
 /**
- * Zoned view of an epoch millisecond timestamp. Throws a RangeError for timestamps outside the
- * representable range or for unknown time zone identifiers.
+ * Zoned view of an epoch millisecond timestamp (fractions are truncated). Throws a RangeError for
+ * timestamps outside the representable range or for unknown time zone identifiers. The
+ * constructor is about a quarter cheaper than Instant#toZonedDateTimeISO() on Bun and on
+ * temporal-polyfill, and it only accepts time zone identifiers, not ISO strings that carry one.
  */
 export function zonedDateTime(ts: number, timeZone: string): ZonedDateTime {
-  return temporal().Instant.fromEpochMilliseconds(Math.trunc(ts)).toZonedDateTimeISO(timeZone);
+  return new (temporal().ZonedDateTime)(BigInt(Math.trunc(ts)) * 1_000_000n, timeZone);
 }
 
 export function offsetMinutes(zdt: ZonedDateTime): number {
   return zdt.offsetNanoseconds / NANOS_PER_MINUTE;
 }
 
+// Native engines recompute the wall clock in every ZonedDateTime getter (about 200 ns each on
+// JavaScriptCore), so the fields are cheaper to read from one PlainDateTime there, whose getters
+// are plain field reads. temporal-polyfill caches the wall clock of a ZonedDateTime but builds
+// PlainDateTimes slowly, so it is read directly. Decided once per Temporal implementation.
+let inspectedApi: TemporalApi | null = null;
+let readThroughPlainDateTime = true;
+
 /**
- * Calendar fields of the wall clock of a ZonedDateTime. They are read through a PlainDateTime,
- * whose getters are plain field reads, while every ZonedDateTime getter of the native engines
- * recomputes the wall clock (about 200 ns each on JavaScriptCore).
+ * Calendar fields of the wall clock of a ZonedDateTime.
  */
 export function wallClock(zdt: ZonedDateTime): GregorianDateTime {
-  const p = zdt.toPlainDateTime();
+  const api = temporal();
+  if (api !== inspectedApi) {
+    inspectedApi = api;
+    readThroughPlainDateTime = Function.prototype.toString
+      .call(api.ZonedDateTime)
+      .includes("[native code]");
+  }
+  const p = readThroughPlainDateTime ? zdt.toPlainDateTime() : zdt;
   return {
     year: p.year,
     month: p.month,
