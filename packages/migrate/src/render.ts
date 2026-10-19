@@ -80,7 +80,7 @@ function childrenOf(node: Node): Node[] {
 
 /**
  * The file with `uses` rewritten. With `whole`, the project no longer uses the library, so its
- * imports go too, with dayjs.extend(plugin) (@momentum-js/momentum/polyfill becomes
+ * imports go too, with dayjs.extend(plugin) (@momentum-js/luxon/polyfill becomes
  * temporal-polyfill's global entry).
  */
 export function renderFile(file: FileInfo, uses: readonly Use[], whole: boolean): string {
@@ -100,7 +100,7 @@ export function renderFile(file: FileInfo, uses: readonly Use[], whole: boolean)
     for (const i of file.imports)
       replaced.set(
         i.node,
-        i.module === "@momentum-js/momentum/polyfill" ? 'import "temporal-polyfill/global";' : ""
+        i.module === "@momentum-js/luxon/polyfill" ? 'import "temporal-polyfill/global";' : ""
       );
   if (primary.size === 0 && wrappers.size === 0 && replaced.size === 0) return text;
 

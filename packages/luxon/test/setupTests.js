@@ -2,7 +2,7 @@
 
 // The library relies on the Temporal API. Runtimes without a native implementation (Node.js before
 // 26, and Node.js builds against the system ICU before 26.12) get the polyfill installed on the
-// global object here, exactly as a consumer would do with `@momentum-js/momentum/polyfill`. Setting
+// global object here, exactly as a consumer would do with `@momentum-js/luxon/polyfill`. Setting
 // MOMENTUM_TEMPORAL=polyfill forces the polyfill even where Temporal is native, so both engines
 // can be exercised.
 if (process.env.MOMENTUM_TEMPORAL === "polyfill") {

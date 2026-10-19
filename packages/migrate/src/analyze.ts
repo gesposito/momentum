@@ -32,8 +32,8 @@ import {
 } from "./rules.js";
 
 export const defaultModules = [
-  "@momentum-js/momentum",
-  "@momentum-js/momentum/polyfill",
+  "@momentum-js/luxon",
+  "@momentum-js/luxon/polyfill",
   "luxon",
   "dayjs",
 ];

@@ -38,7 +38,7 @@ function copy(name, { tsconfig = true } = {}) {
           noEmit: true,
           skipLibCheck: true,
           paths: {
-            "@momentum-js/momentum": [join(repo, "packages/luxon/src/momentum.ts")],
+            "@momentum-js/luxon": [join(repo, "packages/luxon/src/momentum.ts")],
             dayjs: [join(repo, "node_modules/dayjs")],
             "dayjs/*": [join(repo, "node_modules/dayjs/*")],
           },
@@ -48,18 +48,18 @@ function copy(name, { tsconfig = true } = {}) {
     );
   else {
     // momentum installed as a package, as a JavaScript project would have it
-    mkdirSync(join(dir, "node_modules/@momentum-js/momentum"), { recursive: true });
+    mkdirSync(join(dir, "node_modules/@momentum-js/luxon"), { recursive: true });
     writeFileSync(
-      join(dir, "node_modules/@momentum-js/momentum/package.json"),
+      join(dir, "node_modules/@momentum-js/luxon/package.json"),
       JSON.stringify({
-        name: "@momentum-js/momentum",
+        name: "@momentum-js/luxon",
         type: "module",
         exports: { ".": "./index.ts" },
         types: "./index.ts",
       })
     );
     writeFileSync(
-      join(dir, "node_modules/@momentum-js/momentum/index.ts"),
+      join(dir, "node_modules/@momentum-js/luxon/index.ts"),
       `export * from ${JSON.stringify(join(repo, "packages/luxon/src/momentum.ts"))};\n`
     );
     // and Day.js, as installed

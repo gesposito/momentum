@@ -208,7 +208,7 @@ describe("Temporal availability", () => {
       }
       expect(error).toBeInstanceOf(TemporalUnavailableError);
       expect(error.name).toBe("TemporalUnavailableError");
-      expect(error.message).toMatch(/momentum\/polyfill/);
+      expect(error.message).toMatch(/luxon\/polyfill/);
     } finally {
       globalThis.Temporal = original;
       Settings.resetCaches();

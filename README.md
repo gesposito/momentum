@@ -3,7 +3,7 @@
 Luxon's API, running on [Temporal](https://tc39.es/proposal-temporal/).
 
 ```js
-import { DateTime } from "@momentum-js/momentum";
+import { DateTime } from "@momentum-js/luxon";
 
 DateTime.now().setZone("America/New_York").minus({ weeks: 1 }).endOf("day").toISO();
 ```
@@ -31,12 +31,12 @@ migration steps.
 ## Install
 
 ```sh
-bun add @momentum-js/momentum
+bun add @momentum-js/luxon
 ```
 
 Temporal is available natively in Node.js 26 (enabled by default since 26.0.0; builds against the
 system ICU, such as Homebrew's, gained it in 26.12.0), in Bun and in recent browsers. On older
-runtimes install the polyfill and import the `@momentum-js/momentum/polyfill` entry point, which
+runtimes install the polyfill and import the `@momentum-js/luxon/polyfill` entry point, which
 installs `temporal-polyfill` on the global object and re-exports the library:
 
 ```sh
@@ -44,7 +44,7 @@ bun add temporal-polyfill
 ```
 
 ```js
-import { DateTime } from "@momentum-js/momentum/polyfill";
+import { DateTime } from "@momentum-js/luxon/polyfill";
 ```
 
 Using momentum without a `Temporal` global throws a `TemporalUnavailableError` on first use. The
@@ -116,7 +116,7 @@ differ in documented corner cases wait for `--accept`. See [docs/migrate.md](doc
 ## Opting out of the Temporal-native core
 
 ```js
-import { Settings } from "@momentum-js/momentum";
+import { Settings } from "@momentum-js/luxon";
 
 Settings.temporalNative = false;
 ```
@@ -173,7 +173,7 @@ Footprint, from `bun run benchmark:memory` (Bun 1.4.3) and `bun run benchmark:me
 ## Package shape
 
 - ESM only, `"sideEffects"` declared so bundlers can drop unused modules; the main entry never
-  touches globals, only `@momentum-js/momentum/polyfill` does.
+  touches globals, only `@momentum-js/luxon/polyfill` does.
 - `build/momentum.js` (readable), `build/momentum.min.js` (minified) and `build/types/*.d.ts`.
 - The migration tool is a separate package, `@momentum-js/migrate` (command `momentum-migrate`),
   released with the same version and bundling the library it was proven against.

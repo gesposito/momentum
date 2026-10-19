@@ -1,4 +1,4 @@
-import { DateTime, Duration } from "@momentum-js/momentum";
+import { DateTime, Duration } from "@momentum-js/luxon";
 
 export const MEETING_ZONE = "America/New_York";
 

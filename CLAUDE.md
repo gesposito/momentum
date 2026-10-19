@@ -16,7 +16,7 @@ to src/, test/ and benchmarks/, so `git blame` reaches the original authors; `gi
 shows the migration steps) and migrates it one verified step at a time. Day.js's code and test
 suite are vendored the same way under `packages/dayjs/` (tag `dayjs/4549b8d0`), as the reference the
 migration tool's Day.js rules are checked against. The repository is a Bun workspace:
-`packages/luxon` is the library, `packages/migrate` the migration tool and `packages/dayjs` the
+`packages/luxon` is the library (`@momentum-js/luxon`), `packages/migrate` the migration tool (`@momentum-js/migrate`) and `packages/dayjs` the
 vendored Day.js; the root holds the shared tooling (Jest, Babel, the TypeScript base config, the
 devDependencies) and its scripts delegate to the packages.
 
