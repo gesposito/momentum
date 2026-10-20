@@ -59,7 +59,7 @@
     "benchmark:memory": "bun run build:js && bun benchmarks/memory.ts",
     "benchmark:memory:node": "bun run build:js && node --expose-gc benchmarks/memory.ts",
     "sync-tests": "bun scripts/sync-tests.ts",
-    "prepack": "bun run build && cp ../../README.md ../../LICENSE.md ."
+    "prepack": "bun run build && cp ../../LICENSE.md ."
   },
   "dependencies": {
     "temporal-spec": "^1.0.1"

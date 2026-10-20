@@ -5,7 +5,7 @@ node_modules
 build
 coverage
 # copies made at build and prepack time for the published packages
-packages/*/README.md
+packages/migrate/README.md
 packages/*/LICENSE.md
 
 # logs and caches
