@@ -24,7 +24,7 @@
     },
     "packages/luxon": {
       "name": "@momentum-js/luxon",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "temporal-spec": "^1.0.1",
       },
@@ -37,7 +37,7 @@
     },
     "packages/migrate": {
       "name": "@momentum-js/migrate",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "bin": {
         "momentum-migrate": "./build/cli.js",
       },
