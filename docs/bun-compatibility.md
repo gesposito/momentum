@@ -102,7 +102,8 @@ do not; V8 is right in every case). date-fns's `differenceInMonths` and `differe
 move the later date by the whole calendar difference with `setMonth`, so on Bun they are wrong
 for spans of more than about 273,790 years, and the property tests that compare them with
 Temporal (`packages/migrate/test/migrateDateFns.test.js`) keep their pairs within that width where
-a probe finds the bug. Not a test of Luxon's suite, so not in the allowlist. To be reported.
+a probe finds the bug. Not a test of Luxon's suite, so not in the allowlist. Reported as
+[oven-sh/bun#46342](https://github.com/oven-sh/bun/issues/46342).
 
 ## Other differences handled in the test setup
 

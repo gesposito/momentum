@@ -88,7 +88,8 @@ const awayFromDstPair = pair.filter(([d, e]) => awayFromDst(d) && awayFromDst(e)
 // JavaScriptCore's Date#setMonth returns an Invalid Date when the result lies more than 8.64e15 ms
 // (the width of Date's range) from the date, so date-fns's differenceInMonths and
 // differenceInQuarters, which move the later date by the calendar difference with it, are wrong on
-// Bun for such spans (docs/bun-compatibility.md): the pairs stay within that width there
+// Bun for such spans (oven-sh/bun#46342, docs/bun-compatibility.md): the pairs stay within that
+// width there
 const setMonthSpansTheRange = (() => {
   const d = new Date(0);
   d.setFullYear(-187631, 8, 27);
@@ -103,8 +104,9 @@ const awayFromMonthEnds = awayFromDstPair.filter(
     (setMonthSpansTheRange || Math.abs(d.getTime() - e.getTime()) <= 8.64e15)
 );
 // temporal-polyfill 1.0.6 rounds the sub-second part of instants before 1970 toward 1970 in
-// Instant#toString, ZonedDateTime#toString and Instant#round (docs/upstream.md): until the fix
-// ships, the formats that truncate to the second are checked on whole seconds there
+// Instant#toString, ZonedDateTime#toString and Instant#round (fullcalendar/temporal-polyfill#117,
+// docs/upstream.md): until the fix ships, the formats that truncate to the second are checked on
+// whole seconds there
 const instantTruncationIsRight =
   T.Instant.fromEpochMilliseconds(-1).toString({ smallestUnit: "second" }) ===
   "1969-12-31T23:59:59Z";
