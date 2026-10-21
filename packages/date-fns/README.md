@@ -108,6 +108,48 @@ applied only with `--accept`.
   `_lib` helpers stay relative. One file stays out, `fp/_lib/convertToFP/test.ts`, which tests an
   internal helper against lodash and fp-ts. The `tz` and `utc` tests are vendored but not run.
 
+## date-fns against Temporal
+
+Each case times a date-fns call and the Temporal expression the tool rewrites it to, a `Date` in
+and a `Date` out, on the runtime's native Temporal, with [mitata](https://github.com/evanwashere/mitata):
+`bun run benchmark:date-fns` and `bun run benchmark:date-fns:node`. date-fns is the published
+package. Ratios are date-fns's time over Temporal's, so above 1 the rewrite is faster; measured on
+an Apple M1 Max.
+
+| Case | Node 26.12 | Bun 1.4.3 |
+| --- | --- | --- |
+| `parseISO("2017-05-15T09:24:15.123Z")` | 1.0× | 2.1× |
+| `parseISO("2017-05-15T09:24:15")` | 1.5× | 1.4× |
+| `getHours(d)` | 0.04× | 0.02× |
+| `getYear(d), getMonth(d), getDate(d), getHours(d)` | 0.04× | 0.04× |
+| `setHours(d, 3)` | 0.1× | 0.04× |
+| `addDays(d, 1)` | 0.1× | 0.04× |
+| `addMonths(d, 1)` | 0.2× | 0.1× |
+| `startOfDay(d)` | 0.1× | 0.05× |
+| `endOfDay(d)` | 0.1× | 0.04× |
+| `startOfMonth(d)` | 0.1× | 0.2× |
+| `startOfWeek(d)` | 0.09× | 0.06× |
+| `isAfter(e, d)` | 0.08× | 0.4× |
+| `isSameDay(d, e)` | 0.3× | 0.4× |
+| `differenceInHours(e, d)` | 0.1× | 0.5× |
+| `differenceInCalendarDays(e, d)` | 0.4× | 0.8× |
+| `differenceInDays(e, d)` | 0.5× | 0.6× |
+| `getTime(d)` | 0.09× | 0.4× |
+| `formatISO(d)` | 0.2× | 0.4× |
+| `format(d, "yyyy-MM-dd")` | 0.8× | 2.0× |
+| `format(d, "HH:mm")` | 0.5× | 0.8× |
+| `startOfToday()` | 0.1× | 0.2× |
+| `isToday(d)` | 0.4× | 0.7× |
+
+date-fns's functions are thin wrappers over `Date`'s setters and getters, tens of nanoseconds
+each, while every rewrite starts by building a `Temporal.ZonedDateTime` from the `Date` (half a
+microsecond on Bun, a microsecond on Node) and ends by building a `Date` back, and the native
+getters recompute the wall clock on every read (the engine issue tracked in
+[docs/upstream.md](../../docs/upstream.md)), so a call that reads four fields pays four times. A
+migration from date-fns is not a speed-up in today's engines, apart from parsing ISO strings and,
+on Bun, the fixed date format: it is a change of model, and the `Date` round trip disappears
+where a chain of calls becomes one expression or the project switches to Temporal values.
+
 ## License
 
 date-fns's code and tests are MIT, copyright Sasha Koss and Lesha Koss (core) and Sasha Koss (tz, utc); see `core/LICENSE.md`,
