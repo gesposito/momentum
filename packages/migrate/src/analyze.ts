@@ -34,6 +34,9 @@ import {
 export const defaultModules = [
   "@momentum-js/luxon",
   "@momentum-js/luxon/polyfill",
+  "date-fns",
+  "@date-fns/tz",
+  "@date-fns/utc",
   "luxon",
   "dayjs",
 ];
@@ -99,6 +102,8 @@ export interface Renderer {
   text(node: Node): string;
   /** The same, parenthesized when a rewrite made it unfit to be followed by `.x`. */
   operand(node: Node): string;
+  /** For a node rewritten to a Date made from a ZonedDateTime: that ZonedDateTime's text. */
+  zonedOf(node: Node): string | undefined;
 }
 
 export interface FileInfo {
@@ -307,6 +312,10 @@ export async function analyze(
     importedNames: Set<string>;
     /** The module each imported name comes from. */
     importedFrom: Map<string, string>;
+    /** The exported name behind each imported name (`import { addDays as plus }`). */
+    importedAs: Map<string, string>;
+    /** Namespace imports (`import * as fns from "date-fns"`), with their modules. */
+    namespaces: Map<string, string>;
   }[] = [];
   for (const path of loaded.files) {
     const sourceFile = await project.program.getSourceFile(path);
@@ -314,7 +323,9 @@ export async function analyze(
     const file: FileInfo = { path, sourceFile, quote: '"', imports: [] };
     const importedNames = new Set<string>();
     const importedFrom = new Map<string, string>();
-    prepared.push({ file, importedNames, importedFrom });
+    const importedAs = new Map<string, string>();
+    const namespaces = new Map<string, string>();
+    prepared.push({ file, importedNames, importedFrom, importedAs, namespaces });
     for (const statement of (sourceFile as any).statements as Node[]) {
       if (statement.kind !== SyntaxKind.ImportDeclaration) continue;
       const spec = (statement as any).moduleSpecifier;
@@ -331,6 +342,10 @@ export async function analyze(
           importedNames.add(name.text);
           importedFrom.set(name.text, spec.text);
         }
+      for (const e of bindings?.elements ?? [])
+        importedAs.set(e.name.text, e.propertyName?.text ?? e.name.text);
+      if (bindings?.kind === SyntaxKind.NamespaceImport)
+        namespaces.set(bindings.name.text, spec.text);
     }
     // momentum's declarations live where the imported module and its bindings are declared;
     // following the bindings also finds them behind a module that re-exports momentum
@@ -366,7 +381,7 @@ export async function analyze(
   const inLibrary = (path: string) =>
     [...libraryDirs.keys()].some((d) => path.toLowerCase().startsWith(d));
 
-  for (const { file, importedNames, importedFrom } of prepared) {
+  for (const { file, importedNames, importedFrom, importedAs, namespaces } of prepared) {
     if (inLibrary(file.path)) continue;
     const { path, sourceFile } = file;
     const text = sourceFile.text;
@@ -796,6 +811,62 @@ export async function analyze(
           memberOutcome("Dayjs", true, "()", "call", {
             recv: original(callee),
             args: args.map((a, i) => ({ text: r.text(a), value: rerender(argValues[i], a, r) })),
+            facts,
+            quote: file.quote,
+          }),
+      });
+    }
+
+    // calls of date-fns's functions: addDays(date, 1), fns.addDays(date, 1)
+    const dateFnsModule = (m: string | undefined) =>
+      m !== undefined &&
+      (m === "date-fns" || m.startsWith("date-fns/") || m.startsWith("@date-fns/"));
+    for (const call of calls) {
+      if (call.kind !== SyntaxKind.CallExpression || memberNodes.has(call)) continue;
+      const callee = skipParentheses((call as any).expression);
+      let module: string | undefined;
+      let name: string | undefined;
+      if (callee.kind === SyntaxKind.Identifier) {
+        module = importedFrom.get((callee as any).text);
+        name = importedAs.get((callee as any).text) ?? (callee as any).text;
+      } else if (
+        callee.kind === SyntaxKind.PropertyAccessExpression &&
+        (callee as any).expression.kind === SyntaxKind.Identifier
+      ) {
+        module = namespaces.get((callee as any).expression.text);
+        name = (callee as any).name.text;
+      }
+      if (!dateFnsModule(module) || name === undefined) continue;
+      // the curried variants of date-fns/fp take their arguments the other way round
+      if (module!.startsWith("date-fns/fp")) name = "fp";
+      memberNodes.add(call);
+      if (name === "setDefaultOptions") facts.settings.add("date-fns:defaultOptions");
+      const args: Node[] = [...(call as any).arguments];
+      const argValues = await Promise.all(args.map((a) => staticOf(a, original)));
+      const fn = name;
+      uses.push({
+        kind: "member",
+        file: path,
+        ...position(call),
+        subject: `${fn}()`,
+        node: call,
+        produces: null,
+        inputs: [],
+        outcomeOf: () =>
+          memberOutcome("DateFns", true, fn, "call", {
+            recv: original(callee),
+            args: args.map((a, i) => ({ text: original(a), value: argValues[i] })),
+            facts,
+            quote: file.quote,
+          }),
+        computeOf: (r: Renderer) =>
+          memberOutcome("DateFns", true, fn, "call", {
+            recv: original(callee),
+            args: args.map((a, i) => ({
+              text: r.text(a),
+              value: rerender(argValues[i], a, r),
+              zoned: r.zonedOf(a),
+            })),
             facts,
             quote: file.quote,
           }),

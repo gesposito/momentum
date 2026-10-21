@@ -10,6 +10,7 @@
 import { DateTime, Duration } from "../../luxon/src/momentum.js";
 import type { DifferenceId } from "./differences.js";
 import { defineDayjsRules } from "./dayjs.js";
+import { defineDateFnsRules } from "./dateFns.js";
 
 export type ClassName =
   | "DateTime"
@@ -23,7 +24,9 @@ export type ClassName =
   | "SystemZone"
   | "InvalidZone"
   | "Dayjs"
-  | "DayjsTimezone";
+  | "DayjsTimezone"
+  /** date-fns's functions, all static: `addDays(date, 1)` is DateFns.addDays */
+  | "DateFns";
 
 /** What the analyzer knows about an expression without running the program. */
 export type Static =
@@ -41,6 +44,11 @@ export interface Arg {
   /** The source text, with nested rewrites applied. */
   text: string;
   value: Static;
+  /**
+   * When the argument is itself a rewritten date-fns call: the ZonedDateTime its rewrite computes,
+   * before it is turned back into a Date, so that nested calls compose without the round trip.
+   */
+  zoned?: string;
 }
 
 /** Facts about the whole project that decide whether some rewrites are exact. */
@@ -65,7 +73,14 @@ export interface Context {
 export type Precedence = "member" | "expression";
 
 export type Outcome =
-  | { kind: "rewrite"; text: string; differences: readonly DifferenceId[]; precedence: Precedence }
+  | {
+      kind: "rewrite";
+      text: string;
+      differences: readonly DifferenceId[];
+      precedence: Precedence;
+      /** For a rewrite that yields a Date: the ZonedDateTime it is made from (see Arg.zoned). */
+      zoned?: string;
+    }
   | { kind: "none"; reason: string };
 
 export interface Rule {
@@ -1230,6 +1245,7 @@ export interface RuleKit {
   temporal: typeof temporal;
 }
 defineDayjsRules({ method, staticCall, unsupported, rewrite, none, str, temporal });
+defineDateFnsRules({ method, staticCall, unsupported, rewrite, none, str, temporal });
 
 /** Classes without native counterparts: every use of them is "none". */
 export const classNotes: Readonly<Partial<Record<ClassName, string>>> = {

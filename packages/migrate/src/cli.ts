@@ -54,7 +54,7 @@ function acceptedDifferences(value: string | undefined): Set<DifferenceId> {
 }
 
 function rulesText(): string {
-  const lines = ["Rules (momentum, Luxon or Day.js member -> native replacement):", ""];
+  const lines = ["Rules (momentum, Luxon, Day.js or date-fns member -> native replacement):", ""];
   for (const rule of allRules().sort((a, b) =>
     `${a.owner}${a.name}`.localeCompare(`${b.owner}${b.name}`)
   ))

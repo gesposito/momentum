@@ -523,7 +523,7 @@ describe("each documented difference is real", () => {
     }
   }
   // Day.js's differences are reproduced against Day.js, in migrateDayjs.test.js
-  for (const id of differenceIds.filter((d) => d !== "julian-dates" && !d.startsWith("dayjs-")))
+  for (const id of differenceIds.filter((d) => d !== "julian-dates" && !d.startsWith("dayjs-") && !d.startsWith("date-fns-")))
     test(id, () => {
       expect(examples[id]).toBeDefined();
       const [momentum, temporal] = examples[id]();

@@ -41,6 +41,7 @@ function copy(name, { tsconfig = true } = {}) {
             "@momentum-js/luxon": [join(repo, "packages/luxon/src/momentum.ts")],
             dayjs: [join(repo, "node_modules/dayjs")],
             "dayjs/*": [join(repo, "node_modules/dayjs/*")],
+            "date-fns": [join(repo, "node_modules/date-fns")],
           },
         },
         include: ["src"],
@@ -62,8 +63,9 @@ function copy(name, { tsconfig = true } = {}) {
       join(dir, "node_modules/@momentum-js/luxon/index.ts"),
       `export * from ${JSON.stringify(join(repo, "packages/luxon/src/momentum.ts"))};\n`
     );
-    // and Day.js, as installed
+    // and Day.js and date-fns, as installed
     symlinkSync(join(repo, "node_modules/dayjs"), join(dir, "node_modules/dayjs"));
+    symlinkSync(join(repo, "node_modules/date-fns"), join(dir, "node_modules/date-fns"));
   }
   return dir;
 }
@@ -232,6 +234,49 @@ describe("a Day.js project", () => {
         expect(result.stderr).toBe("");
         expect(result.status).toBe(0);
         expect(readFileSync(join(dir, "src/app.ts"), "utf8")).toBe(expected("dayjs", "app.ts"));
+        expect(run("bun", ["check", "-p", dir, "--no-pretty"]).status).toBe(0);
+        expect(exportsOf(dir, "src/app.ts")).toEqual(before);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    timeout
+  );
+});
+
+describe("a date-fns project", () => {
+  // every Date argument's rewrite carries invalid-throws, format's fixed pattern date-fns-years
+  const accept = "--accept=invalid-throws,date-fns-years";
+
+  test(
+    "check says which differences stand in the way",
+    () => {
+      const dir = copy("date-fns");
+      try {
+        const strict = report(dir);
+        expect(strict.status).toBe(1);
+        expect(strict.counts).toEqual({ uses: 10, exact: 2, accepted: 0, pending: 8, leftOff: 0 });
+        expect(strict.blockingDifferences).toEqual({ "invalid-throws": 8, "date-fns-years": 1 });
+        const accepted = report(dir, accept);
+        expect(accepted.status).toBe(0);
+        expect(accepted.fullSwitch).toBe(true);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    timeout
+  );
+
+  test(
+    "apply rewrites everything, nested calls as one chain, drops date-fns, type-checks and computes the same values",
+    () => {
+      const dir = copy("date-fns");
+      try {
+        const before = exportsOf(dir, "src/app.ts");
+        const result = cli("apply", dir, accept);
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+        expect(readFileSync(join(dir, "src/app.ts"), "utf8")).toBe(expected("date-fns", "app.ts"));
         expect(run("bun", ["check", "-p", dir, "--no-pretty"]).status).toBe(0);
         expect(exportsOf(dir, "src/app.ts")).toEqual(before);
       } finally {

@@ -27,10 +27,10 @@ export function textReport(
   const filesUsing = new Set(analysis.uses.map((u) => u.file)).size;
   lines.push(`Migration to native Temporal: ${analysis.root}`);
   lines.push(
-    `  ${analysis.files.length} files analysed, ${analysis.uses.length} uses of momentum, Luxon or Day.js in ${filesUsing} of them${analysis.inferred ? " (no tsconfig.json: types inferred)" : ""}`
+    `  ${analysis.files.length} files analysed, ${analysis.uses.length} uses of momentum, Luxon, Day.js or date-fns in ${filesUsing} of them${analysis.inferred ? " (no tsconfig.json: types inferred)" : ""}`
   );
   if (analysis.uses.length === 0) {
-    lines.push("", "momentum, Luxon and Day.js are not used: nothing to migrate.");
+    lines.push("", "momentum, Luxon, Day.js and date-fns are not used: nothing to migrate.");
     return lines.join("\n");
   }
   lines.push("");

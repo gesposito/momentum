@@ -1,8 +1,8 @@
 # Moving from momentum to native Temporal
 
 momentum is a bridge: Luxon's API today, plain Temporal tomorrow. The migration tool tells you how
-far a project is from dropping momentum (or Luxon, or Day.js) and rewrites what already has a
-native replacement.
+far a project is from dropping momentum (or Luxon, Day.js or date-fns) and rewrites what already
+has a native replacement.
 
 ```sh
 npx @momentum-js/migrate check path/to/project            # would the rewrites complete the switch?
@@ -75,6 +75,23 @@ of the repository, with a benchmark of Day.js against the Temporal that replaces
 `packages/migrate/test/migrateDayjs.test.js` checks each exact rewrite against Day.js itself, and
 `bun run test:dayjs-suite` runs Day.js's own test suite before and after the rewrites (see below).
 
+## date-fns
+
+The same tool migrates date-fns. Its functions take and return plain `Date`s and compute in the
+system zone, so each call becomes a Temporal expression that does the same: the argument read as
+a `Temporal.ZonedDateTime` in the system zone, the work done there, a `Date` built from the
+result's instant. Nested calls become one chain, and a `parseISO` literal starts it in plain
+Temporal. Every rewrite of a `Date` argument carries `invalid-throws`, since date-fns passes an
+Invalid Date through where Temporal throws; a date-fns project accepts that one difference to
+switch. When the whole project switches, the imports of date-fns go. The `in` option, `TZDate`
+values, locales and `setDefaultOptions` leave the calls they touch alone.
+
+Function by function, what the tool rewrites for date-fns, what differs and what has no
+replacement is in the [date-fns page](https://github.com/gesposito/momentum/blob/main/packages/date-fns/README.md)
+of the repository. `packages/migrate/test/migrateDateFns.test.js` checks each exact rewrite against
+date-fns itself, and `bun run test:date-fns-suite` runs date-fns's own test suite before and after
+the rewrites (see below).
+
 ## Documented differences
 
 | Difference | What changes |
@@ -102,6 +119,8 @@ of the repository, with a benchmark of Day.js against the Temporal that replaces
 | `dayjs-years` | years before 100 or after 9999 differ |
 | `dayjs-plugins` | a Day.js plugin that patches the rewritten method stops applying |
 | `dayjs-utc-mode` | isUTC is true for any value in the UTC zone |
+| `date-fns-years` | in the fixed formats, years outside 1000 to 9999 differ |
+| `date-fns-whole-units` | differenceInDays, Weeks, Months, Quarters and Years count whole units differently at month ends and around DST changes |
 
 `npx @momentum-js/migrate rules` prints each one with an example.
 
@@ -121,7 +140,7 @@ invalid DateTimes, whose checks (`isValid`) become try/catch around the place th
   calls where one would do. Run your formatter afterwards; long lines are left as they are.
 - Values that pass through code typed `any` are invisible to the type checker; the report flags
   where momentum values flow into such code, but cannot follow them further.
-- The current time (`DateTime.now()`, `dayjs()`) becomes `Temporal.Now`, which reads the system
+- The current time (`DateTime.now()`, `dayjs()`, `startOfToday()`) becomes `Temporal.Now`, which reads the system
   clock rather than `Date`, so a test that freezes `Date` (MockDate, Jest 29's fake timers) sees
   the real time after the rewrite. Fake timers from @sinonjs/fake-timers 15.4 on, as in Jest 30.5,
   fake `Temporal.Now` as well, and temporal-polyfill's `Temporal.Now` reads `Date.now()`.
@@ -130,10 +149,11 @@ invalid DateTimes, whose checks (`isValid`) become try/catch around the place th
 
 Besides the property tests (`packages/migrate/test/migrateRules.test.js` against momentum,
 `packages/migrate/test/migrateDayjs.test.js` against Day.js, which `bun run test:dayjs-zones` repeats in
-ten system zones with unusual DST rules), `packages/migrate/test/migrate.test.js` runs the tool on the
-projects in `packages/migrate/test/fixtures/migrate`, Day.js ones among them: the report, the rewritten
-files against reviewed outputs, the type check of the result, and the values each project computes
-before and after.
+ten system zones with unusual DST rules, `packages/migrate/test/migrateDateFns.test.js` against
+date-fns), `packages/migrate/test/migrate.test.js` runs the tool on the projects in
+`packages/migrate/test/fixtures/migrate`, Day.js and date-fns ones among them: the report, the
+rewritten files against reviewed outputs, the type check of the result, and the values each project
+computes before and after.
 
 As a larger check, applying the exact rewrites to Luxon's own test suite leaves all 1292 tests
 passing, and Day.js's own suite (1.11.23) is vendored in `packages/dayjs/` with Day.js's source and history
@@ -144,3 +164,10 @@ project: the 227 rewrites in 9 of its 93 files leave every passing test passing,
 of 788) as in Auckland (784 of 788). The rewritten suite runs on temporal-polyfill, whose
 `Temporal.Now` follows the clock the suite freezes with MockDate; native `Temporal.Now` would not
 (see Limits).
+
+date-fns's own suite (4.4.0) is vendored the same way in `packages/date-fns/` (`bun run
+sync-date-fns`), and `bun run test:date-fns-suite` runs it on vitest before and after the rewrites,
+with `invalid-throws` accepted since every `Date` argument carries it: the 784 rewrites in 159 of
+its 252 test files leave every passing test passing, in New York as in Auckland (3,147 of 3,148
+before, 2,961 after; the 186 others pass an Invalid Date and now see a throw, as accepted). The
+rewritten suite runs on temporal-polyfill, whose `Temporal.Now` follows vitest's fake timers.

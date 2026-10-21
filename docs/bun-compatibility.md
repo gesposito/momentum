@@ -88,6 +88,22 @@ Duration from millis`. Reported as [oven-sh/bun#46043](https://github.com/oven-s
 (open); a build of [#44268](https://github.com/oven-sh/bun/pull/44268), the open pull request
 that gives the console, `Bun.inspect` and `bun:test` one value formatter, still fails it.
 
+### 7. `Date#setMonth` returns an Invalid Date across more than 8.64e15 ms
+
+```js
+const d = new Date(0);
+d.setFullYear(-187631, 8, 27);
+d.setMonth(3472364); // Node: +101732-09-27, Bun: Invalid Date
+```
+
+September 101732 is a valid date, but it lies more than 8.64e15 ms, the width of `Date`'s range,
+from the start, and JavaScriptCore's `setMonth` gives `NaN` there (`setFullYear` and `setDate`
+do not; V8 is right in every case). date-fns's `differenceInMonths` and `differenceInQuarters`
+move the later date by the whole calendar difference with `setMonth`, so on Bun they are wrong
+for spans of more than about 273,790 years, and the property tests that compare them with
+Temporal (`packages/migrate/test/migrateDateFns.test.js`) keep their pairs within that width where
+a probe finds the bug. Not a test of Luxon's suite, so not in the allowlist. To be reported.
+
 ## Other differences handled in the test setup
 
 - `process.versions.cldr` is not exposed by Bun, so Luxon's `cldrMajorVersion()` helper returns

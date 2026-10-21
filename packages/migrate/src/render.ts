@@ -121,9 +121,16 @@ export function renderFile(file: FileInfo, uses: readonly Use[], whole: boolean)
   };
   const paren = (node: Node, t: string) => (precedence.get(node) === "expression" ? `(${t})` : t);
 
+  const zonedOf = (n: Node): string | undefined => {
+    const use = primary.get(n);
+    if (use === undefined) return undefined;
+    const o = use.compute(renderer);
+    return o.kind === "rewrite" ? o.zoned : undefined;
+  };
   const renderer: Renderer = {
     text: (n) => render(n),
     operand: (n) => paren(n, render(n)),
+    zonedOf,
   };
 
   function render(node: Node): string {
@@ -133,6 +140,7 @@ export function renderFile(file: FileInfo, uses: readonly Use[], whole: boolean)
       const o = w.compute({
         text: (n) => (n === node ? current : render(n)),
         operand: (n) => (n === node ? paren(node, current) : renderer.operand(n)),
+        zonedOf,
       });
       out = settle(node, o, w.snippet);
     }

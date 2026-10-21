@@ -159,6 +159,27 @@ export const differences = {
       "the calls they watch, and a plugin the tool does not know, passed to dayjs.extend, may change " +
       "any method: check what it patches before accepting this.",
   },
+  "date-fns-years": {
+    summary: "in the fixed formats, years outside 1000 to 9999 differ",
+    detail:
+      "date-fns's format pads yyyy to four digits (10000-01-01, -0005-01-01) where Temporal writes " +
+      "ISO 8601's extended years (+010000-01-01, -000005-01-01), and formatRFC3339 and " +
+      "formatRFC7231 write the year as it is (999) where Temporal and Date's toUTCString pad it " +
+      "(0999).",
+  },
+  "date-fns-whole-units": {
+    summary:
+      "differenceInDays, Weeks, Months, Quarters and Years count whole units differently at month " +
+      "ends and around DST changes",
+    detail:
+      "date-fns counts the last day of a month as a whole month after the last day of the previous " +
+      "one (differenceInMonths(new Date(2026, 1, 28), new Date(2025, 11, 31)) is 2 where Temporal's " +
+      "since gives 1 month and 28 days), and it moves one endpoint with Date's setters and compares " +
+      "wall clocks, so a time that falls in a skipped hour shifts forward (differenceInDays(new " +
+      "Date(2026, 6, 1, 2, 30), new Date(2026, 2, 8, 3, 0)) is 115 in New York, although 114 whole " +
+      "days elapsed; Temporal's since gives 114). Away from month ends and the hours around a DST " +
+      "change they agree.",
+  },
   "dayjs-utc-mode": {
     summary: "isUTC is true for any value in the UTC zone",
     detail:

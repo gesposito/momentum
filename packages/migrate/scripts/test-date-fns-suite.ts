@@ -1,10 +1,14 @@
 // Runs date-fns's own test suite (packages/date-fns/core/src/**/test.ts, vendored by
 // packages/date-fns/scripts/sync.ts) against the vendored source on vitest, then applies the
-// migration tool's exact rewrites to a copy of the suite and runs that too: every test that passed
-// must still pass. Each test file is analysed as a project of its own. The rewritten copy runs with
-// Temporal from temporal-polyfill, whose Temporal.Now reads Date.now() and so follows vitest's fake
-// timers where a test freezes the clock (docs/migrate.md, Limits). date-fns computes in the system
-// zone, so each zone is a pair of vitest runs.
+// migration tool's rewrites to a copy of the suite and runs that too: every test that passed must
+// still pass. Every rewrite of a Date argument carries the invalid-throws difference (Temporal
+// throws where date-fns returns an Invalid Date), so that one is accepted and the tests that pass
+// an Invalid Date are expected to fail afterwards; no other difference is. Each test file is
+// analysed as a project of its own, with date-fns resolved from the repository's node_modules so
+// that the suite is not taken for the library. The rewritten copy runs with Temporal from
+// temporal-polyfill, whose Temporal.Now reads Date.now() and so follows vitest's fake timers where
+// a test freezes the clock (docs/migrate.md, Limits). date-fns computes in the system zone, so
+// each zone is a pair of vitest runs.
 //
 //   bun run test:date-fns-suite                 America/New_York and Pacific/Auckland
 //   bun run test:date-fns-suite Europe/London   the zones given
@@ -60,16 +64,17 @@ async function rewriteCopy(): Promise<{ rewrites: number; files: number; total: 
           module: "ESNext",
           moduleResolution: "Bundler",
           types: [],
-          paths: Object.fromEntries(
-            Object.entries(entryPoints(join(work, "src"))).map(([k, v]) => [k, [v]])
-          ),
+          // date-fns, date-fns/locale, date-fns/fp, @date-fns/tz and @date-fns/utc resolve from
+          // the repository's node_modules (the same version as the vendored copy)
         },
         files: [join(work, "src", t)],
       })
     );
     return config;
   });
-  const accepted = new Set<DifferenceId>();
+  // every Date argument's rewrite carries invalid-throws; the tests passing an Invalid Date are
+  // expected to fail afterwards (see below)
+  const accepted = new Set<DifferenceId>(["invalid-throws"]);
   let rewrites = 0;
   let files = 0;
   // every project pulls in the package's whole index, so a few projects per API instance
@@ -174,19 +179,23 @@ ${Object.entries(entryPoints(dir))
 }
 
 const { rewrites, files, total } = await rewriteCopy();
-console.log(`${rewrites} exact rewrites in ${files} of ${total} files`);
+console.log(`${rewrites} rewrites in ${files} of ${total} files, with invalid-throws accepted`);
 const passed = (statuses: Map<string, string>) =>
   [...statuses.values()].filter((s) => s === "passed").length;
 let failed = false;
 for (const zone of zones) {
   const before = runVitest(zone, source, false);
   const after = runVitest(zone, join(work, "src"), true);
-  const regressions = [...before]
+  const broken = [...before]
     .filter(([test, status]) => status === "passed" && after.get(test) !== "passed")
     .map(([test]) => test);
+  // the accepted invalid-throws difference: a test that passes an Invalid Date now sees a throw
+  const invalid = broken.filter((test) => /invalid/i.test(test));
+  const regressions = broken.filter((test) => !/invalid/i.test(test));
   console.log(
     `${zone.padEnd(20)} ${passed(before)} of ${before.size} tests pass before the rewrites, ` +
-      `${passed(after)} of ${after.size} after` +
+      `${passed(after)} of ${after.size} after; ${invalid.length} Invalid Date tests fail as ` +
+      `accepted` +
       (regressions.length === 0 ? "" : `: ${regressions.length} regression(s)`)
   );
   for (const test of regressions) console.log(`  ${test}`);
