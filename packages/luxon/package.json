@@ -1,6 +1,6 @@
 {
   "name": "@momentum-js/luxon",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Luxon-compatible immutable dates, durations and intervals, powered by Temporal",
   "keywords": [
     "date",

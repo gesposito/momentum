@@ -1,6 +1,6 @@
 {
   "name": "@momentum-js/migrate",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Moves code from momentum, Luxon, Day.js or date-fns to native Temporal: reports what is left and applies the exact rewrites",
   "keywords": [
     "temporal",
