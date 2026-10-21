@@ -161,7 +161,7 @@ export function defineDateFnsRules(kit: RuleKit) {
   ] as const) {
     dated(
       name,
-      `\`.${op}({ years, months, weeks, days, hours, minutes, seconds })\` from a duration literal (exact for whole amounts)`,
+      `\`.${op}({ years, months, weeks, days, hours, minutes, seconds })\` from a duration literal (exact for whole amounts; months with days differ: date-fns-dst-steps)`,
       (ctx, zdt, rest) => {
         const [duration, opts] = rest;
         if (duration?.value.kind !== "object") return none("the duration is not an object literal");
@@ -181,6 +181,15 @@ export function defineDateFnsRules(kit: RuleKit) {
         // date-fns adds each field in turn; a Temporal duration takes one sign for all of them
         if (signs.size > 1)
           return none("the duration mixes signs, which a Temporal duration cannot");
+        // an empty duration is the date itself, where Temporal's add({}) throws
+        if (entries.length === 0) return asDate(zdt, differences);
+        // date-fns adds the months, then the days: a skipped time in between shifts the result
+        const keys = Object.keys(duration.value.props);
+        if (
+          keys.some((k) => k === "years" || k === "months") &&
+          keys.some((k) => k === "weeks" || k === "days")
+        )
+          differences.push("date-fns-dst-steps");
         return asDate(`${zdt}.${op}({ ${entries.join(", ")} })`, differences);
       },
       { values: 1 }
@@ -373,13 +382,14 @@ export function defineDateFnsRules(kit: RuleKit) {
   ] as const) {
     dated(
       name,
-      "`.toPlainDate().add({ days: to the week's last day }).toZonedDateTime(zone)` (exact)",
+      "`.toPlainDate().add({ days: to the week's last day }).toZonedDateTime(zone)` (a skipped midnight differs: date-fns-dst-steps)",
       (ctx, zdt, rest) => {
         const w = iso ? 1 : weekStart(ctx, rest[0]);
         if (typeof w !== "number") return w;
+        // date-fns sets midnight before moving the date, so a skipped midnight shifts the result
         return asDate(
           startOfDate(`${zdt}.toPlainDate().add({ days: 6 - (${daysIntoWeek(zdt, w)}) })`),
-          []
+          ["date-fns-dst-steps"]
         );
       }
     );
@@ -392,23 +402,32 @@ export function defineDateFnsRules(kit: RuleKit) {
   });
   dated(
     "endOfISOWeekYear",
-    "the Sunday before the next ISO week year, at the end of the day (exact)",
+    "the Sunday before the next ISO week year, at the end of the day (a skipped midnight differs: date-fns-dst-steps)",
     (ctx, zdt) => {
       const jan4 = isoWeekYearStart(`${zdt}.yearOfWeek + 1`);
+      // date-fns takes a millisecond off the next year's start, which a skipped midnight shifts
       return asDate(
         withFields(
           startOfDate(`${jan4}.subtract({ days: ${jan4}.dayOfWeek })`),
           endOfDayFields,
           ctx.quote
         ),
-        []
+        ["date-fns-dst-steps"]
       );
     }
   );
-  dated("lastDayOfISOWeekYear", "the Sunday before the next ISO week year (exact)", (ctx, zdt) => {
-    const jan4 = isoWeekYearStart(`${zdt}.yearOfWeek + 1`);
-    return asDate(startOfDate(`${jan4}.subtract({ days: ${jan4}.dayOfWeek })`), []);
-  });
+  dated(
+    "lastDayOfISOWeekYear",
+    "the Sunday before the next ISO week year (a skipped midnight differs: date-fns-dst-steps)",
+    (ctx, zdt) => {
+      const jan4 = isoWeekYearStart(`${zdt}.yearOfWeek + 1`);
+      // date-fns steps back a day from the next year's start, which a skipped midnight shifts
+      return asDate(
+        startOfDate(`${jan4}.subtract({ days: ${jan4}.dayOfWeek })`),
+        ["date-fns-dst-steps"]
+      );
+    }
+  );
 
   // today, tomorrow and yesterday read the clock
   const today = "Temporal.Now.plainDateISO()";
@@ -592,15 +611,16 @@ export function defineDateFnsRules(kit: RuleKit) {
   );
   dated(
     "setDayOfYear",
-    "`.toPlainDate().with({ month: 1, day: 1 }).add({ days: n - 1 })` with the time kept (exact)",
+    "`.toPlainDate().with({ month: 1, day: 1 }).add({ days: n - 1 })` with the time kept (a skipped midnight in January differs: date-fns-dst-steps)",
     (ctx, zdt, rest) => {
       const n = amount(rest[0]);
       if (n === null) return none("the day is not a whole number");
       if (rest.length > 1 && !plainOptions(rest[1])) return inOption();
       const date = `${zdt}.toPlainDate().with({ month: 1, day: 1 }).add({ days: ${n.text} - 1 })`;
+      // date-fns goes through the same day of January, whose skipped midnight shifts the time
       return asDate(
         `${date}.toPlainDateTime(${zdt}.toPlainTime()).toZonedDateTime(${zone})`,
-        n.differences
+        [...n.differences, "date-fns-dst-steps"]
       );
     },
     { values: 1 }

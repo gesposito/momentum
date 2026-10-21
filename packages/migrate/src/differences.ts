@@ -180,6 +180,21 @@ export const differences = {
       "days elapsed; Temporal's since gives 114). Away from month ends and the hours around a DST " +
       "change they agree.",
   },
+  "date-fns-dst-steps": {
+    summary:
+      "add and sub with months and days, lastDayOfWeek, lastDayOfISOWeek, setDayOfYear, " +
+      "endOfISOWeekYear and lastDayOfISOWeekYear keep the shift of a skipped wall-clock time",
+    detail:
+      "date-fns moves in steps through Date: add and sub add the months before the days, " +
+      "lastDayOfWeek sets midnight before moving to the week's last day, setDayOfYear goes " +
+      "through the same day of January, and endOfISOWeekYear and lastDayOfISOWeekYear step back " +
+      "from the next ISO week year's start. A step that lands on a time a DST change skips moves " +
+      "forward by the gap, and the steps after it keep the shifted time, where Temporal computes " +
+      "the date in one step: in America/New_York, add(2026-02-08T02:30, { months: 1, days: 1 }) " +
+      "is 2026-03-09T03:30 where Temporal gives 02:30, and in America/Havana, which changes at " +
+      "midnight, lastDayOfWeek of 2057-03-11T01:00 (the first instant of that Sunday) is " +
+      "2057-03-17T01:00 where Temporal gives 00:00.",
+  },
   "dayjs-utc-mode": {
     summary: "isUTC is true for any value in the UTC zone",
     detail:

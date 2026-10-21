@@ -121,6 +121,7 @@ the rewrites (see below).
 | `dayjs-utc-mode` | isUTC is true for any value in the UTC zone |
 | `date-fns-years` | in the fixed formats, years outside 1000 to 9999 differ |
 | `date-fns-whole-units` | differenceInDays, Weeks, Months, Quarters and Years count whole units differently at month ends and around DST changes |
+| `date-fns-dst-steps` | add and sub with months and days, the last days of weeks and ISO week years, endOfISOWeekYear and setDayOfYear keep the shift of a skipped wall-clock time |
 
 `npx @momentum-js/migrate rules` prints each one with an example.
 
@@ -150,7 +151,8 @@ invalid DateTimes, whose checks (`isValid`) become try/catch around the place th
 Besides the property tests (`packages/migrate/test/migrateRules.test.js` against momentum,
 `packages/migrate/test/migrateDayjs.test.js` against Day.js, which `bun run test:dayjs-zones` repeats in
 ten system zones with unusual DST rules, `packages/migrate/test/migrateDateFns.test.js` against
-date-fns), `packages/migrate/test/migrate.test.js` runs the tool on the projects in
+date-fns, which `bun run test:date-fns-zones` repeats the same way), `packages/migrate/test/migrate.test.js`
+runs the tool on the projects in
 `packages/migrate/test/fixtures/migrate`, Day.js and date-fns ones among them: the report, the
 rewritten files against reviewed outputs, the type check of the result, and the values each project
 computes before and after.
@@ -167,7 +169,7 @@ of 788) as in Auckland (784 of 788). The rewritten suite runs on temporal-polyfi
 
 date-fns's own suite (4.4.0) is vendored the same way in `packages/date-fns/` (`bun run
 sync-date-fns`), and `bun run test:date-fns-suite` runs it on vitest before and after the rewrites,
-with `invalid-throws` accepted since every `Date` argument carries it: the 784 rewrites in 159 of
+with `invalid-throws` accepted since every `Date` argument carries it: the 760 rewrites in 154 of
 its 252 test files leave every passing test passing, in New York as in Auckland (3,147 of 3,148
-before, 2,961 after; the 186 others pass an Invalid Date and now see a throw, as accepted). The
+before, 2,966 after; the 181 others pass an Invalid Date and now see a throw, as accepted). The
 rewritten suite runs on temporal-polyfill, whose `Temporal.Now` follows vitest's fake timers.

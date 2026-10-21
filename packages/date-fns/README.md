@@ -32,11 +32,11 @@ When the whole project switches, the imports of date-fns go. The `in` option (a 
 
 | date-fns | Temporal | |
 | --- | --- | --- |
-| `addDays(d, n)` to `addYears`, `addQuarters`, `sub*`, `add(d, duration)`, `sub(d, duration)` | `.add({ days: n })`, `.subtract(...)` | exact for whole amounts; a fractional or NaN amount: `fractional-amounts` |
-| `startOfDay` to `startOfYear`, `startOfDecade`, `startOfWeek`, `startOfISOWeek`, `startOfISOWeekYear`, the `endOf*` and `lastDayOf*` | `.startOfDay()`, `.toPlainDate().with(...)`, `.with(..., { offset: "ignore" })` | exact |
+| `addDays(d, n)` to `addYears`, `addQuarters`, `sub*`, `add(d, duration)`, `sub(d, duration)` | `.add({ days: n })`, `.subtract(...)` | exact for whole amounts; a fractional or NaN amount: `fractional-amounts`; `add` and `sub` with months and days: `date-fns-dst-steps` |
+| `startOfDay` to `startOfYear`, `startOfDecade`, `startOfWeek`, `startOfISOWeek`, `startOfISOWeekYear`, the `endOf*` and `lastDayOf*` | `.startOfDay()`, `.toPlainDate().with(...)`, `.with(..., { offset: "ignore" })` | exact; `lastDayOfWeek`, `lastDayOfISOWeek`, `endOfISOWeekYear` and `lastDayOfISOWeekYear` around a skipped midnight: `date-fns-dst-steps` |
 | `startOfToday`, `endOfTomorrow` and the other four | `Temporal.Now.plainDateISO()` | exact |
 | `getYear` to `getMilliseconds`, `getDay`, `getISODay`, `getDayOfYear`, `getISOWeek`, `getISOWeekYear`, `getISOWeeksInYear`, `getQuarter`, `getDecade`, `getDaysInMonth`, `getDaysInYear`, `getTime`, `getUnixTime` | the fields (`.month - 1`, `.dayOfWeek % 7`, `.weekOfYear`) | exact |
-| `setYear` to `setMilliseconds`, `set(d, values)`, `setDay`, `setISODay`, `setDayOfYear`, `setQuarter` | `.with({ ... }, { offset: "ignore" })`, `.add({ days })` | exact for values in range; out of range, and `setYear` from a 29 February: `overflow` |
+| `setYear` to `setMilliseconds`, `set(d, values)`, `setDay`, `setISODay`, `setDayOfYear`, `setQuarter` | `.with({ ... }, { offset: "ignore" })`, `.add({ days })` | exact for values in range; out of range, and `setYear` from a 29 February: `overflow`; `setDayOfYear` through a skipped midnight in January: `date-fns-dst-steps` |
 | `isAfter`, `isBefore`, `isEqual`, `compareAsc`, `compareDesc`, `isWithinInterval` | `Temporal.ZonedDateTime.compare` | exact |
 | `isSameDay` to `isSameYear`, `isSameWeek`, `isSameISOWeek`, `isSameQuarter`, `isSameISOWeekYear` | `.toPlainDate().equals(...)`, the fields | exact |
 | `isToday`, `isTomorrow`, `isYesterday`, `isThisWeek` to `isThisYear`, `isThisHour` to `isThisSecond`, `isPast`, `isFuture` | `Temporal.Now.plainDateISO()`, `Temporal.Now.zonedDateTimeISO()`, `Temporal.Now.instant()` | exact |
@@ -75,15 +75,23 @@ applied only with `--accept`.
 - Property tests, `packages/migrate/test/migrateDateFns.test.js`, evaluate the text of every exact
   rewrite against date-fns itself, over `Date`'s range and around DST transitions, with
   [fast-check](https://fast-check.dev); "exact" there means the `invalid-throws` of a `Date`
-  argument and no other difference. The two date-fns differences are reproduced with an example
+  argument and no other difference. The three date-fns differences are reproduced with an example
   each, and every function date-fns exports has a catalog entry. They run in New York with the
-  rest of the suite.
+  rest of the suite, and `bun run test:date-fns-zones` repeats them in ten other system zones
+  (Havana, Santiago and Beirut, which change at midnight; São Paulo; Lord Howe's half-hour DST;
+  Dublin's negative DST; Kathmandu's +05:45; Chatham's +12:45; Sydney; UTC). Two things they
+  leave out, where date-fns computes through `Date` and lands on another day: the month
+  arithmetic (`addMonths`, `addQuarters`, `addYears`, `add` and their `sub` counterparts) reads
+  the last day of the target month at the date's wall-clock time, and returns the first of the
+  next month where a DST change skipped that time across midnight (Moscow's 1918 and 1919
+  changes at 22:00 and 23:00); and zones that skipped a whole calendar day (Kiribati's
+  1994-12-31, Samoa's 2011-12-30) misread that month's length.
 - date-fns's own test suite, the one in `core/src/**/test.ts`: `bun run test:date-fns-suite`
   runs it on vitest against the vendored source, applies the rewrites to a copy of it, file by
   file, with `invalid-throws` accepted, and runs the copy: every test that passed must still pass,
-  except the ones that pass an Invalid Date, which now see a throw and are counted apart. The 784
-  rewrites in 159 of its 252 files leave 2,961 of 3,148 tests passing in New York and in Auckland,
-  from 3,147 before: the 186 others are the Invalid Date tests, and the one failing before is a
+  except the ones that pass an Invalid Date, which now see a throw and are counted apart. The 760
+  rewrites in 154 of its 252 files leave 2,966 of 3,148 tests passing in New York and in Auckland,
+  from 3,147 before: the 181 others are the Invalid Date tests, and the one failing before is a
   test date-fns skips (`isDate` with a date from another iframe). The rewritten copy runs with
   Temporal from temporal-polyfill, whose `Temporal.Now` follows vitest's fake timers where a test
   freezes the clock, as date-fns does; native `Temporal.Now` would not. Each run is one system

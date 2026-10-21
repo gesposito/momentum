@@ -6,6 +6,8 @@
 // documented date-fns differences are reproduced with an example each, and every function date-fns
 // exports has a catalog entry.
 
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
 import * as dateFns from "date-fns";
 import { fc, nearTransition } from "../../luxon/test/momentum/fastCheck";
 import { differenceIds } from "../src/differences";
@@ -13,6 +15,8 @@ import { findRule } from "../src/rules";
 
 const T = globalThis.Temporal;
 const zone = T.Now.timeZoneId();
+const zonedOf = (d) => T.Instant.fromEpochMilliseconds(d.getTime()).toZonedDateTimeISO(zone);
+const repo = join(__dirname, "../../..");
 const facts = { settings: new Set(), localeConfigured: false };
 const ctx = (args) => ({ recv: "", args, facts, quote: '"' });
 const dateArg = (text) => ({ text, value: { kind: "dynamic", type: "date" } });
@@ -114,6 +118,30 @@ const wholeSecondsBefore1970 = (dates) =>
   instantTruncationIsRight
     ? dates
     : dates.filter((d) => d.getTime() >= 0 || d.getMilliseconds() === 0);
+// iso-format: date-fns writes Z for a zero offset and truncates a sub-minute one, Temporal +00:00
+// and the offset rounded to the minute; the strings agree for the other offsets, which a zone
+// such as UTC never has (the formats with an offset are not checked there)
+const zoneHasOffsets = [0, Date.UTC(2000, 6, 1)].some(
+  (ms) => zonedOf(new Date(ms)).offsetNanoseconds !== 0
+);
+const sameOffsetString = (dates) =>
+  dates.filter(
+    (d) => d.getTimezoneOffset() !== 0 && zonedOf(d).offsetNanoseconds % 60000000000 === 0
+  );
+// date-fns-dst-steps: lastDayOfWeek and lastDayOfISOWeek agree where the date's day starts
+// at midnight, setDayOfYear where the date's time exists on the same day of January
+const startsAtMidnight = (zdt) => zdt.startOfDay().toPlainTime().toString() === "00:00:00";
+const dayStartsAtMidnight = date.filter((d) => startsAtMidnight(zonedOf(d)));
+const timeExistsInJanuary = date.filter((d) => {
+  const z = zonedOf(d);
+  return z
+    .toPlainDate()
+    .with({ month: 1 })
+    .toPlainDateTime(z.toPlainTime())
+    .toZonedDateTime(zone)
+    .toPlainTime()
+    .equals(z.toPlainTime());
+});
 const amount = fc.integer({ min: -1000, max: 1000 });
 
 describe("exact date-fns arithmetic agrees with date-fns", () => {
@@ -128,17 +156,32 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
     "Quarters",
     "Years",
   ];
+  // date-fns's addMonths reads the last day of the target month at the date's wall-clock time;
+  // where a DST change skips that time across midnight (Moscow's 1918 and 1919 changes at 22:00
+  // and 23:00 did) it reads the first of the next month and returns that day. The month
+  // arithmetic is checked where that step stays on its day.
+  const monthEndKeepsDate = (d, months) => {
+    const z = zonedOf(d);
+    const target = z.toPlainDate().add({ months });
+    const last = target.with({ day: target.daysInMonth });
+    return last.toPlainDateTime(z.toPlainTime()).toZonedDateTime(zone).toPlainDate().equals(last);
+  };
+  const monthsIn = { Months: 1, Quarters: 3, Years: 12 };
   test("add<Unit> and sub<Unit> with whole amounts", () => {
     for (const unit of units)
       for (const prefix of ["add", "sub"]) {
         const name = `${prefix}${unit}`;
+        const sign = prefix === "add" ? 1 : -1;
+        const safe = (d, n) =>
+          !(unit in monthsIn) || monthEndKeepsDate(d, sign * n * monthsIn[unit]);
         fc.assert(
-          fc.property(date, amount, (d, n) =>
+          fc.property(date, amount, (d, n) => {
+            fc.pre(safe(d, n));
             same(
               dateFns[name](d, n),
               evaluate(dated(rule(name).apply(ctx([dateArg("d"), lit(n)]))), { d })
-            )
-          )
+            );
+          })
         );
         // a dynamic amount carries fractional-amounts and invalid-throws, and agrees for integers
         const dynamic = dated(rule(name).apply(ctx([dateArg("d"), numberArg("n")])), [
@@ -146,9 +189,10 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
           "fractional-amounts",
         ]);
         fc.assert(
-          fc.property(date, amount, (d, n) =>
-            same(dateFns[name](d, n), evaluate(dynamic, { d, n }))
-          )
+          fc.property(date, amount, (d, n) => {
+            fc.pre(safe(d, n));
+            same(dateFns[name](d, n), evaluate(dynamic, { d, n }));
+          })
         );
       }
   });
@@ -172,14 +216,36 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
           .filter((v) => v !== 0)
           .map(Math.sign)
       ).size <= 1;
-    for (const name of ["add", "sub"])
+    // date-fns adds the months before the days, so a time skipped at that step shifts the result
+    // (date-fns-dst-steps): the properties keep to dates whose time exists after the months
+    const steps = (dur) =>
+      ("years" in dur || "months" in dur) && ("weeks" in dur || "days" in dur);
+    const timeKept = (d, dur, verb) => {
+      const z = zonedOf(d);
+      const months = { years: dur.years ?? 0, months: dur.months ?? 0 };
+      return z[verb](months).toPlainTime().equals(z.toPlainTime());
+    };
+    const months = (dur, verb) =>
+      (verb === "add" ? 1 : -1) * ((dur.years ?? 0) * 12 + (dur.months ?? 0));
+    for (const [name, verb] of [
+      ["add", "add"],
+      ["sub", "subtract"],
+    ])
       check(
         name,
         fc.property(date, duration.filter(sameSign), (d, dur) => {
+          fc.pre(months(dur, verb) === 0 || monthEndKeepsDate(d, months(dur, verb)));
+          fc.pre(!steps(dur) || timeKept(d, dur, verb));
           const literal = obj(Object.fromEntries(Object.entries(dur).map(([k, v]) => [k, lit(v)])));
           same(
             dateFns[name](d, dur),
-            evaluate(dated(rule(name).apply(ctx([dateArg("d"), literal]))), { d })
+            evaluate(
+              dated(
+                rule(name).apply(ctx([dateArg("d"), literal])),
+                steps(dur) ? ["invalid-throws", "date-fns-dst-steps"] : undefined
+              ),
+              { d }
+            )
           );
         })
       );
@@ -208,10 +274,7 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
       "lastDayOfDecade",
       "startOfISOWeek",
       "endOfISOWeek",
-      "lastDayOfISOWeek",
       "startOfISOWeekYear",
-      "endOfISOWeekYear",
-      "lastDayOfISOWeekYear",
     ];
     for (const name of simple)
       check(
@@ -220,7 +283,7 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
           same(dateFns[name](d), evaluate(dated(rule(name).apply(ctx([dateArg("d")]))), { d }))
         )
       );
-    for (const name of ["startOfWeek", "endOfWeek", "lastDayOfWeek"])
+    for (const name of ["startOfWeek", "endOfWeek"])
       check(
         name,
         fc.property(date, fc.integer({ min: 0, max: 6 }), (d, w) => {
@@ -232,6 +295,52 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
             })
           );
         })
+      );
+    // the last day of a week sets midnight before moving the date: date-fns-dst-steps
+    const skipped = ["invalid-throws", "date-fns-dst-steps"];
+    check(
+      "lastDayOfISOWeek",
+      fc.property(dayStartsAtMidnight, (d) =>
+        same(
+          dateFns.lastDayOfISOWeek(d),
+          evaluate(dated(rule("lastDayOfISOWeek").apply(ctx([dateArg("d")])), skipped), { d })
+        )
+      )
+    );
+    check(
+      "lastDayOfWeek",
+      fc.property(dayStartsAtMidnight, fc.integer({ min: 0, max: 6 }), (d, w) => {
+        same(
+          dateFns.lastDayOfWeek(d),
+          evaluate(dated(rule("lastDayOfWeek").apply(ctx([dateArg("d")])), skipped), { d })
+        );
+        same(
+          dateFns.lastDayOfWeek(d, { weekStartsOn: w }),
+          evaluate(
+            dated(
+              rule("lastDayOfWeek").apply(ctx([dateArg("d"), obj({ weekStartsOn: lit(w) })])),
+              skipped
+            ),
+            { d }
+          )
+        );
+      })
+    );
+    // the end and last day of an ISO week year step back from the next year's start, whose
+    // skipped midnight shifts them: date-fns-dst-steps
+    const nextIsoYearStartsAtMidnight = date.filter((d) => {
+      const jan4 = T.PlainDate.from({ year: zonedOf(d).yearOfWeek + 1, month: 1, day: 4 });
+      return startsAtMidnight(jan4.subtract({ days: jan4.dayOfWeek - 1 }).toZonedDateTime(zone));
+    });
+    for (const name of ["endOfISOWeekYear", "lastDayOfISOWeekYear"])
+      check(
+        name,
+        fc.property(nextIsoYearStartsAtMidnight, (d) =>
+          same(
+            dateFns[name](d),
+            evaluate(dated(rule(name).apply(ctx([dateArg("d")])), skipped), { d })
+          )
+        )
       );
   });
   test("today, tomorrow and yesterday", () => {
@@ -294,7 +403,6 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
       setMinutes: [0, 59],
       setSeconds: [0, 59],
       setMilliseconds: [0, 999],
-      setDayOfYear: [1, 365],
       setQuarter: [1, 4],
       setDay: [0, 6],
       setISODay: [1, 7],
@@ -308,6 +416,21 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
           )
         )
       );
+    // setDayOfYear goes through the same day of January: date-fns-dst-steps
+    fc.assert(
+      fc.property(timeExistsInJanuary, fc.integer({ min: 1, max: 365 }), (d, n) =>
+        same(
+          dateFns.setDayOfYear(d, n),
+          evaluate(
+            dated(rule("setDayOfYear").apply(ctx([dateArg("d"), lit(n)])), [
+              "invalid-throws",
+              "date-fns-dst-steps",
+            ]),
+            { d }
+          )
+        )
+      )
+    );
     // setYear keeps a February 29 as March 1 where Temporal clamps it to February 28: overflow
     fc.assert(
       fc.property(
@@ -400,10 +523,13 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
       check(
         name,
         fc.property(
-          fc.oneof(
-            date,
-            instant.map((ms) => new Date(Date.now() + (ms % 864000000)))
-          ),
+          fc
+            .oneof(
+              date,
+              instant.map((ms) => new Date(Date.now() + (ms % 864000000)))
+            )
+            // date-fns and the rewrite read the clock a moment apart
+            .filter((d) => Math.abs(d.getTime() - Date.now()) > 1000),
           (d) =>
             same(dateFns[name](d), evaluate(dated(rule(name).apply(ctx([dateArg("d")]))), { d }))
         )
@@ -505,8 +631,22 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
       ["formatISO9075", [obj({ representation: lit("date") })], []],
       ["formatISO9075", [obj({ representation: lit("time") })], []],
       ["formatISO", [obj({ representation: lit("date") })], []],
-      ["formatRFC3339", [], ["iso-format", "date-fns-years"], wholeSecondsBefore1970(since1000)],
-      ["formatRFC3339", [obj({ fractionDigits: lit(3) })], ["iso-format", "date-fns-years"], since1000],
+      ...(zoneHasOffsets
+        ? [
+            [
+              "formatRFC3339",
+              [],
+              ["iso-format", "date-fns-years"],
+              wholeSecondsBefore1970(sameOffsetString(since1000)),
+            ],
+            [
+              "formatRFC3339",
+              [obj({ fractionDigits: lit(3) })],
+              ["iso-format", "date-fns-years"],
+              sameOffsetString(since1000),
+            ],
+          ]
+        : []),
       ["format", [lit("HH:mm")], []],
       ["format", [lit("HH:mm:ss")], []],
       ["format", [lit("HH:mm:ss.SSS")], []],
@@ -539,19 +679,23 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
       )
     );
     // formatISO writes Z for a zero offset where Temporal writes +00:00: iso-format
-    fc.assert(
-      fc.property(
-        wholeSecondsBefore1970(fourDigitYears.filter((d) => d.getTimezoneOffset() !== 0)),
-        (d) =>
-          same(
-            dateFns.formatISO(d),
-            evaluate(
-              dated(rule("formatISO").apply(ctx([dateArg("d")])), ["invalid-throws", "iso-format"]),
-              { d }
+    if (zoneHasOffsets)
+      fc.assert(
+        fc.property(
+          wholeSecondsBefore1970(sameOffsetString(fourDigitYears)),
+          (d) =>
+            same(
+              dateFns.formatISO(d),
+              evaluate(
+                dated(rule("formatISO").apply(ctx([dateArg("d")])), [
+                  "invalid-throws",
+                  "iso-format",
+                ]),
+                { d }
+              )
             )
-          )
-      )
-    );
+        )
+      );
     for (const pattern of ["yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd HH:mm:ss"])
       fc.assert(
         fc.property(fourDigitYears, (d) =>
@@ -668,8 +812,39 @@ describe("date-fns's documented differences", () => {
       expect(evaluate(days, { d: f, e: g })).toBe(114);
     }
   });
+  test("date-fns-dst-steps: add goes through the months first, where 02:30 was skipped in 2026", () => {
+    const outcome = rule("add").apply(ctx([dateArg("d"), obj({ months: lit(1), days: lit(1) })]));
+    expect(outcome.differences).toContain("date-fns-dst-steps");
+    expect(rule("add").apply(ctx([dateArg("d"), obj({ months: lit(1) })])).differences).toEqual([
+      "invalid-throws",
+    ]);
+    if (zone === "America/New_York") {
+      const d = new Date(2026, 1, 8, 2, 30);
+      expect(dateFns.add(d, { months: 1, days: 1 }).getTime()).toBe(
+        new Date(2026, 2, 9, 3, 30).getTime()
+      );
+      expect(evaluate(outcome, { d }).getTime()).toBe(new Date(2026, 2, 9, 2, 30).getTime());
+    }
+  });
+  test("date-fns-dst-steps: in Havana, the last day of a week keeps a skipped midnight's hour", () => {
+    // Havana's DST starts at midnight; 2057-03-11 is such a Sunday, so its first instant is 01:00
+    const outcome = rule("lastDayOfWeek").apply(ctx([dateArg("d")]));
+    expect(outcome.differences).toContain("date-fns-dst-steps");
+    const script =
+      'import { lastDayOfWeek } from "date-fns";\n' +
+      'const d = new Date("2057-03-11T05:00:00.000Z");\n' +
+      `console.log(JSON.stringify([lastDayOfWeek(d).getTime(), (${outcome.text}).getTime()]));`;
+    const result = spawnSync("bun", ["-e", script], {
+      cwd: repo,
+      encoding: "utf8",
+      env: { ...process.env, TZ: "America/Havana" },
+    });
+    expect(result.stderr).toBe("");
+    // date-fns: Saturday 01:00 CDT; Temporal: Saturday 00:00 CDT
+    expect(JSON.parse(result.stdout)).toEqual([Date.UTC(2057, 2, 17, 5), Date.UTC(2057, 2, 17, 4)]);
+  });
   test("every date-fns difference has an example here", () => {
-    const reproduced = ["date-fns-years", "date-fns-whole-units"];
+    const reproduced = ["date-fns-years", "date-fns-whole-units", "date-fns-dst-steps"];
     for (const id of differenceIds.filter((d) => d.startsWith("date-fns-")))
       expect(reproduced).toContain(id);
   });

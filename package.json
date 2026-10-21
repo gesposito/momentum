@@ -24,6 +24,7 @@
     "test:bun": "bun scripts/test-bun.ts",
     "test:dayjs-zones": "bun packages/migrate/scripts/test-dayjs-zones.ts",
     "test:dayjs-suite": "bun packages/migrate/scripts/test-dayjs-suite.ts",
+    "test:date-fns-zones": "bun packages/migrate/scripts/test-date-fns-zones.ts",
     "test:date-fns-suite": "bun packages/migrate/scripts/test-date-fns-suite.ts",
     "benchmark": "bun run --cwd packages/luxon benchmark",
     "benchmark:compare": "bun run --cwd packages/luxon benchmark:compare",
