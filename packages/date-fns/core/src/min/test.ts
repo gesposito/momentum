@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { min } from "./index.ts";
+import { min } from "date-fns";
 
 describe("min", () => {
   it("returns the earliest date", () => {

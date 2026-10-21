@@ -1,8 +1,8 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { format } from "../format/index.ts";
-import { parseJSON } from "./index.ts";
+import { format } from "date-fns";
+import { parseJSON } from "date-fns";
 
 describe("parseJSON", () => {
   it("parses a formatted new Date() back to UTC - issue 2149", () => {

@@ -1,7 +1,7 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import type { FormatDistanceFn } from "../locale/types.ts";
-import { formatDistance } from "./index.ts";
+import type { FormatDistanceFn } from "date-fns";
+import { formatDistance } from "date-fns";
 
 describe("formatDistance", () => {
   describe("seconds", () => {

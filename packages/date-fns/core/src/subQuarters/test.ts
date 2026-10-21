@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { subQuarters } from "./index.ts";
+import { subQuarters } from "date-fns";
 
 describe("subQuarters", () => {
   it("subtracts the given number of quarters", () => {

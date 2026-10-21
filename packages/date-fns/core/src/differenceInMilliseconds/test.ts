@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { differenceInMilliseconds } from "./index.ts";
+import { differenceInMilliseconds } from "date-fns";
 
 describe("differenceInMilliseconds", () => {
   it("returns the number of milliseconds between the given dates", () => {

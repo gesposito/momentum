@@ -23,6 +23,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-The `dayjs` directory of the repository holds Day.js's source and test suite
+The `packages/dayjs` directory of the repository holds Day.js's source and test suite
 (https://github.com/iamkun/dayjs), used under the MIT license in `packages/dayjs/LICENSE` as the reference
 the migration tool's Day.js rules are checked against; none of it is part of the published packages.
+
+The `packages/date-fns` directory of the repository holds date-fns's source and test suite with its `tz`
+and `utc` packages (https://github.com/date-fns/date-fns), used under the MIT license in
+`packages/date-fns/core/LICENSE.md`, `tz/LICENSE.md` and `utc/LICENSE.md` as the reference the
+migration tool's date-fns rules are checked against; none of it is part of the published packages.

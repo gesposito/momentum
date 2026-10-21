@@ -1,6 +1,6 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import { addWeeks } from "./index.ts";
+import { addWeeks } from "date-fns";
 import { assertType } from "../_lib/test/index.ts";
 
 describe("addWeeks", () => {

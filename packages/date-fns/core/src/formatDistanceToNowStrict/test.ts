@@ -1,8 +1,8 @@
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { fakeDate } from "../_lib/test/index.ts";
-import type { FormatDistanceFn } from "../locale/types.ts";
-import { formatDistanceToNowStrict } from "./index.ts";
+import type { FormatDistanceFn } from "date-fns";
+import { formatDistanceToNowStrict } from "date-fns";
 
 describe("formatDistanceToNowStrict", { concurrent: false }, () => {
   fakeDate(new Date(1986, 3, 4, 10, 32, 0));

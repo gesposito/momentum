@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRelative } from "./index.ts";
+import { formatRelative } from "date-fns";
 import { TZDate, tz } from "@date-fns/tz";
 
 describe("formatRelative", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fakeDate } from "../_lib/test/index.ts";
-import { isFuture } from "./index.ts";
+import { isFuture } from "date-fns";
 
 describe("isFuture", { concurrent: false }, () => {
   fakeDate(new Date(2014, 8 /* Sep */, 25));

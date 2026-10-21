@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { endOfWeek } from "./index.ts";
+import { endOfWeek } from "date-fns";
 
 describe("endOfWeek", () => {
   it("returns the date with the time set to 23:59:59:999 and the date set to the last day of a week", () => {

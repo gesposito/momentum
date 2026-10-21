@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthsToYears } from "./index.ts";
+import { monthsToYears } from "date-fns";
 
 describe("monthsToYears", () => {
   it("converts months to years", () => {

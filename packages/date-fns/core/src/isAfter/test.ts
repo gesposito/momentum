@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAfter } from "./index.ts";
+import { isAfter } from "date-fns";
 
 describe("isAfter", () => {
   it("returns true if the first date is after the second one", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { FormatDistanceFn } from "../locale/types.ts";
-import { formatDistanceStrict } from "./index.ts";
+import type { FormatDistanceFn } from "date-fns";
+import { formatDistanceStrict } from "date-fns";
 import { TZDate, tz } from "@date-fns/tz";
 
 describe("formatDistanceStrict", () => {

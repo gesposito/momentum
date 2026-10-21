@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSameSecond } from "./index.ts";
+import { isSameSecond } from "date-fns";
 
 describe("isSameSecond", () => {
   it("returns true if the given dates have the same second", () => {

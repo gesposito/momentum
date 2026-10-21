@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { eachQuarterOfInterval } from "./index.ts";
+import { eachQuarterOfInterval } from "date-fns";
 
 describe("eachQuarterOfInterval", () => {
   it("returns an array with starts of quarters from the quarter of the start date to the quarter of the end date", () => {

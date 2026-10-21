@@ -1,7 +1,7 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import type { ContextOptions, DateArg } from "../types.ts";
-import { differenceInCalendarQuarters } from "./index.ts";
+import type { ContextOptions, DateArg } from "date-fns";
+import { differenceInCalendarQuarters } from "date-fns";
 
 describe("differenceInCalendarQuarters", () => {
   it("returns the number of calendar quarters between the given dates", () => {

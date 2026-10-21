@@ -1,7 +1,7 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
-import { constructNow } from "./index.ts";
+import { constructNow } from "date-fns";
 import { assertType } from "../_lib/test/index.ts";
 
 describe("constructNow", () => {

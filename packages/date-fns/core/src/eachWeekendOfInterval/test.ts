@@ -2,8 +2,8 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { subWeeks } from "../subWeeks/index.ts";
-import { eachWeekendOfInterval } from "./index.ts";
+import { subWeeks } from "date-fns";
+import { eachWeekendOfInterval } from "date-fns";
 
 describe("eachWeekendOfInterval", () => {
   it("returns all weekends within the interval", () => {

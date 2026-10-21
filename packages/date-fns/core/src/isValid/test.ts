@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValid } from "./index.ts";
+import { isValid } from "date-fns";
 
 describe("isValid", () => {
   it("returns true if the given date is valid", () => {

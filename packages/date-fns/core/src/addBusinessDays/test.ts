@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { addBusinessDays } from "./index.ts";
+import { addBusinessDays } from "date-fns";
 import { getDstTransitions } from "../_lib/test/tzOffsetTransitions.ts";
 
 describe("addBusinessDays", () => {

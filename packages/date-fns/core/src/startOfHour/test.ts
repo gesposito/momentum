@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { startOfHour } from "./index.ts";
+import { startOfHour } from "date-fns";
 
 describe("startOfHour", () => {
   it("returns the date with the time set to the first millisecond of an hour", () => {

@@ -1,6 +1,6 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import { endOfDay } from "./index.ts";
+import { endOfDay } from "date-fns";
 import { assertType } from "../_lib/test/index.ts";
 import { UTCDate } from "@date-fns/utc";
 

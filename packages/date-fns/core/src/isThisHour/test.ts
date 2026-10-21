@@ -2,8 +2,8 @@ import { tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { fakeDate } from "../_lib/test/index.ts";
-import type { ContextOptions } from "../types.ts";
-import { isThisHour } from "./index.ts";
+import type { ContextOptions } from "date-fns";
+import { isThisHour } from "date-fns";
 
 describe("isThisHour", { concurrent: false }, () => {
   const { fakeNow } = fakeDate(

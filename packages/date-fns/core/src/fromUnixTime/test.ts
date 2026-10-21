@@ -1,7 +1,7 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { fromUnixTime } from "./index.ts";
+import { fromUnixTime } from "date-fns";
 
 describe("fromUnixTime", () => {
   it("returns the date derived from the given UNIX timestamp", () => {

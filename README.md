@@ -13,6 +13,7 @@ bridge is meant to be temporary, and its tooling is built to take it down.
 | [`@momentum-js/luxon`](packages/luxon/README.md) | Luxon 3.7's `DateTime`, `Duration`, `Interval`, `Info`, `Settings` and zones, with the same methods, options, parsing and formatting, on native Temporal or on temporal-polyfill; verified by Luxon's own test suite |
 | [`@momentum-js/migrate`](docs/migrate.md) | `npx @momentum-js/migrate check <project>` finds every Luxon, momentum or Day.js use with TypeScript's type checker and reports whether the exact rewrites complete the switch to native Temporal; `apply` writes them |
 | [Day.js](packages/dayjs/README.md) | Day.js 1.11.23's code and test suite, vendored with Day.js's history: the reference the migration tool's Day.js rules are checked against, and a benchmark of Day.js against the Temporal that replaces it |
+| [date-fns](packages/date-fns/README.md) | date-fns 4.4.0 with `@date-fns/tz` and `@date-fns/utc`, vendored with its history: the reference for the tool's date-fns rules, which come next |
 
 ```sh
 bun add @momentum-js/luxon            # Luxon's API on Temporal
@@ -31,8 +32,9 @@ DateTime.now().setZone("America/New_York").minus({ weeks: 1 }).endOf("day").toIS
 Luxon's own history (736 commits) merged in underneath, so `git blame` reaches the original
 authors and `git log --first-parent` lists the migration steps, each a small refactor verified by
 Luxon's suite, which fills `packages/luxon/test/`, is re-vendored by a script and is never edited
-by hand. Day.js's code and suite came in the same way (983 commits, tag `dayjs/4549b8d0`) for the
-migration tool, which is checked by running Day.js's suite before and after its rewrites.
+by hand. Day.js's code and suite came in the same way (983 commits, tag `dayjs/4549b8d0`), and so
+did date-fns's (1,678 commits, tag `date-fns/cd53d253`), for the migration tool, which is checked
+by running each library's suite before and after its rewrites.
 
 **Temporal underneath.** A DateTime is an instant in a Temporal time zone. Its calendar fields are
 read from a `Temporal.ZonedDateTime` when first needed, wall-clock times are resolved by

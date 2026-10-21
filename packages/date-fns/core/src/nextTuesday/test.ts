@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { nextTuesday } from "./index.ts";
+import { nextTuesday } from "date-fns";
 
 describe("nextTuesday", () => {
   it("returns the following Tuesday given various dates before the same", () => {

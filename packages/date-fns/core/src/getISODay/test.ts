@@ -1,7 +1,7 @@
 import { tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import type { ContextOptions, DateArg } from "../types.ts";
-import { getISODay } from "./index.ts";
+import type { ContextOptions, DateArg } from "date-fns";
+import { getISODay } from "date-fns";
 
 describe("getISODay", () => {
   it("returns the day of the ISO week of the given date", () => {

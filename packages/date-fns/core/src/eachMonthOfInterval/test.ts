@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { eachMonthOfInterval } from "./index.ts";
+import { eachMonthOfInterval } from "date-fns";
 
 describe("eachMonthOfInterval", () => {
   it("returns an array with starts of months from the month of the start date to the month of the end date", () => {

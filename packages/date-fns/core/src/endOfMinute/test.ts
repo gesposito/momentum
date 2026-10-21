@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { endOfMinute } from "./index.ts";
+import { endOfMinute } from "date-fns";
 
 describe("endOfMinute", () => {
   it("returns the date with the time set to the last millisecond before a minute ends", () => {

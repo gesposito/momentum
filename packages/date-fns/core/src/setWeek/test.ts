@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { setWeek } from "./index.ts";
+import { setWeek } from "date-fns";
 
 describe("setWeek", () => {
   it("sets the local week", () => {

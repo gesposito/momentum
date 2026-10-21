@@ -1,7 +1,7 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
 import { assertType, fakeDate } from "../_lib/test/index.ts";
-import { endOfTomorrow } from "./index.ts";
+import { endOfTomorrow } from "date-fns";
 
 describe("endOfTomorrow", { concurrent: false }, () => {
   const { fakeNow } = fakeDate(

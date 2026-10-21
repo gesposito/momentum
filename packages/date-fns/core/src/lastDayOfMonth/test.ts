@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { lastDayOfMonth } from "./index.ts";
+import { lastDayOfMonth } from "date-fns";
 
 describe("lastDayOfMonth", () => {
   it("returns the date with the time set to 00:00:00 and the date set to the last day of a month", () => {

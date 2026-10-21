@@ -1,8 +1,8 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import { addMonths } from "../addMonths/index.ts";
-import type { ContextOptions, Interval } from "../types.ts";
-import { intervalToDuration } from "./index.ts";
+import { addMonths } from "date-fns";
+import type { ContextOptions, Interval } from "date-fns";
+import { intervalToDuration } from "date-fns";
 
 describe("intervalToDuration", () => {
   it("returns correct duration for arbitrary dates", () => {

@@ -24,3 +24,6 @@ packages/*/LICENSE.md
 
 # the rewritten copy of Day.js's suite made by packages/migrate/scripts/test-dayjs-suite.ts
 packages/dayjs/.rewritten
+
+# the rewritten copy of date-fns's suite made by packages/migrate/scripts/test-date-fns-suite.ts
+packages/date-fns/.rewritten

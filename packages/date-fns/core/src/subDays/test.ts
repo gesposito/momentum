@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { subDays } from "./index.ts";
+import { subDays } from "date-fns";
 
 describe("subDays", () => {
   it("subtracts the given number of days", () => {

@@ -1,7 +1,7 @@
 import { tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import type { ContextOptions, DateArg } from "../types.ts";
-import { getWeeksInMonth } from "./index.ts";
+import type { ContextOptions, DateArg } from "date-fns";
+import { getWeeksInMonth } from "date-fns";
 
 describe("getWeeksInMonth", () => {
   it("returns the number of calendar weeks the month in the given date spans", () => {

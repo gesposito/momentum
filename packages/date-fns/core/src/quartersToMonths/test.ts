@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quartersToMonths } from "./index.ts";
+import { quartersToMonths } from "date-fns";
 
 describe("quartersToMonths", () => {
   it("converts quarters to months", () => {

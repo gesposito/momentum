@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { isDate } from "./index.ts";
+import { isDate } from "date-fns";
 
 describe("isDate", () => {
   it("returns true if the given value is a date object", () => {

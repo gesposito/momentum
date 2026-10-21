@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { max } from "./index.ts";
+import { max } from "date-fns";
 
 describe("max", () => {
   it("returns the latest date", () => {

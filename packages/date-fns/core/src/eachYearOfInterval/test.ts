@@ -2,7 +2,7 @@ import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { eachYearOfInterval } from "./index.ts";
+import { eachYearOfInterval } from "date-fns";
 
 describe("eachYearOfInterval", () => {
   it("returns an array with starts of days from the day of the start date to the day of the end date", () => {

@@ -1,7 +1,7 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import type { ContextOptions, DateArg } from "../types.ts";
-import { differenceInBusinessDays } from "./index.ts";
+import type { ContextOptions, DateArg } from "date-fns";
+import { differenceInBusinessDays } from "date-fns";
 
 describe("differenceInBusinessDays", () => {
   it("returns the number of business days between the given dates, excluding weekends", () => {

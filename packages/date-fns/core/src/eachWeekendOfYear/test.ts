@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { eachWeekendOfYear } from "./index.ts";
-import { isWeekend } from "../isWeekend/index.ts";
+import { eachWeekendOfYear } from "date-fns";
+import { isWeekend } from "date-fns";
 import { tz, TZDate } from "@date-fns/tz";
 import { assertType } from "../_lib/test/index.ts";
 import { UTCDate } from "@date-fns/utc";

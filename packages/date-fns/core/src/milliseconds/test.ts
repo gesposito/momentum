@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { milliseconds } from "./index.ts";
+import { milliseconds } from "date-fns";
 
 describe("milliseconds", () => {
   it("converts years to milliseconds", () => {

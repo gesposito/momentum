@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMilliseconds } from "./index.ts";
+import { getMilliseconds } from "date-fns";
 
 describe("getMilliseconds", () => {
   it("returns the milliseconds of the given date", () => {

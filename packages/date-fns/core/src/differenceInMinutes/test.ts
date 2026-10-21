@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { differenceInMinutes } from "./index.ts";
+import { differenceInMinutes } from "date-fns";
 
 describe("differenceInMinutes", () => {
   it("returns the number of minutes between the given dates", () => {

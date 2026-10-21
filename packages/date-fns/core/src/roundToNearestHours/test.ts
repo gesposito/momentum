@@ -5,7 +5,7 @@ import { assertType } from "../_lib/test/index.ts";
 import {
   roundToNearestHours,
   type RoundToNearestHoursOptions,
-} from "./index.ts";
+} from "date-fns";
 
 describe("roundToNearestHours", () => {
   it("rounds given date to the nearest hour by default", () => {

@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { getDefaultOptions } from "./index.ts";
-import { setDefaultOptions } from "../setDefaultOptions/index.ts";
-import { startOfWeek } from "../startOfWeek/index.ts";
+import { getDefaultOptions } from "date-fns";
+import { setDefaultOptions } from "date-fns";
+import { startOfWeek } from "date-fns";
 import {
   getDefaultOptions as getInternalDefaultOptions,
   setDefaultOptions as setInternalDefaultOptions,
 } from "../_lib/defaultOptions/index.ts";
-import { eo } from "../locale/eo/index.ts";
+import { eo } from "date-fns/locale";
 import { resetDefaultOptions } from "../_lib/test/index.ts";
 
 describe("getDefaultOptions", () => {

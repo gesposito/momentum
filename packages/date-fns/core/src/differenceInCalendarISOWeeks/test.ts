@@ -1,7 +1,7 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import type { ContextOptions, DateArg } from "../types.ts";
-import { differenceInCalendarISOWeeks } from "./index.ts";
+import type { ContextOptions, DateArg } from "date-fns";
+import { differenceInCalendarISOWeeks } from "date-fns";
 
 describe("differenceInCalendarISOWeeks", () => {
   it("returns the number of calendar ISO weeks between the given dates", () => {

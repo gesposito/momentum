@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { minutesToHours } from "./index.ts";
+import { minutesToHours } from "date-fns";
 
 describe("minuteToHours", () => {
   it("converts minutes to hours", () => {

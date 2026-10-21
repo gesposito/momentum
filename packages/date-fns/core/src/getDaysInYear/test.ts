@@ -1,7 +1,7 @@
 import { tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import type { ContextOptions, DateArg } from "../types.ts";
-import { getDaysInYear } from "./index.ts";
+import type { ContextOptions, DateArg } from "date-fns";
+import { getDaysInYear } from "date-fns";
 
 describe("getDaysInYear", () => {
   it("returns the number of days in the year of the given date", () => {

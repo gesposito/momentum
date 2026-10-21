@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closestIndexTo } from "./index.ts";
+import { closestIndexTo } from "date-fns";
 
 describe("closestIndexTo", () => {
   it("returns the date index from the given array closest to the given date", () => {

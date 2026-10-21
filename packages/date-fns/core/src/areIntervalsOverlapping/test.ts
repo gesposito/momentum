@@ -1,7 +1,7 @@
 import { tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import type { ContextOptions, Interval } from "../types.ts";
-import { areIntervalsOverlapping } from "./index.ts";
+import type { ContextOptions, Interval } from "date-fns";
+import { areIntervalsOverlapping } from "date-fns";
 
 describe("areIntervalsOverlapping", () => {
   const initialIntervalStart = new Date(2016, 10, 10, 13, 0, 0);

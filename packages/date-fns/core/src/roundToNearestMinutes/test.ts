@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   roundToNearestMinutes,
   type RoundToNearestMinutesOptions,
-} from "./index.ts";
+} from "date-fns";
 import { assertType } from "../_lib/test/index.ts";
 import { UTCDate } from "@date-fns/utc";
 import { TZDate, tz } from "@date-fns/tz";

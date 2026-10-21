@@ -1,6 +1,6 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
-import { intlFormatDistance } from "./index.ts";
+import { intlFormatDistance } from "date-fns";
 
 describe("intlFormatDistance", () => {
   describe("with default values", () => {

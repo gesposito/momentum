@@ -1,7 +1,7 @@
 import { tz } from "@date-fns/tz";
 import { describe, expect, it, vi } from "vitest";
 import { generateOffset } from "../_lib/test/index.ts";
-import { formatISO } from "./index.ts";
+import { formatISO } from "date-fns";
 
 describe("formatISO", () => {
   it("formats ISO-8601 extended format", () => {

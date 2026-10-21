@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parse } from "../../parse/index.ts";
-import { zhHK } from "./index.ts";
+import { parse } from "date-fns";
+import { zhHK } from "date-fns/locale";
 
 describe("zh-HK locale", () => {
   it("parses October with localized month tokens", () => {

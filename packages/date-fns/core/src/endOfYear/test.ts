@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { endOfYear } from "./index.ts";
+import { endOfYear } from "date-fns";
 import { assertType } from "../_lib/test/index.ts";
 import { TZDate, tz } from "@date-fns/tz";
 import { UTCDate } from "@date-fns/utc";

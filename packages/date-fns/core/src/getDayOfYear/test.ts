@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { getDayOfYear } from "./index.ts";
+import { getDayOfYear } from "date-fns";
 import { tz } from "@date-fns/tz";
-import type { ContextOptions, DateArg } from "../types.ts";
+import type { ContextOptions, DateArg } from "date-fns";
 
 describe("getDayOfYear", () => {
   it("returns the day of the year of the given date", () => {

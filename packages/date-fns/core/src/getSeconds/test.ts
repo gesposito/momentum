@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSeconds } from "./index.ts";
+import { getSeconds } from "date-fns";
 
 describe("getSeconds", () => {
   it("returns the seconds of the given date", () => {

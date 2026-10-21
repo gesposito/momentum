@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatISODuration } from "./index.ts";
-import { intervalToDuration } from "../intervalToDuration/index.ts";
+import { formatISODuration } from "date-fns";
+import { intervalToDuration } from "date-fns";
 
 describe("formatISODuration", () => {
   it("Everything returns correct duration for arbitrary dates", () => {

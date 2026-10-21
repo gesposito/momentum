@@ -1,7 +1,7 @@
 import { TZDate, tz } from "@date-fns/tz";
 import { describe, expect, it } from "vitest";
 import { assertType } from "../_lib/test/index.ts";
-import { addQuarters } from "./index.ts";
+import { addQuarters } from "date-fns";
 import { UTCDate } from "@date-fns/utc";
 
 describe("addQuarters", () => {

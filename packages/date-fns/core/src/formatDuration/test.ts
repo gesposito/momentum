@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDuration } from "./index.ts";
+import { formatDuration } from "date-fns";
 
 describe("formatDuration", () => {
   it("formats full duration", () => {

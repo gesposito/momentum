@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { formatRFC3339 } from "./index.ts";
+import { formatRFC3339 } from "date-fns";
 import { generateOffset } from "../_lib/test/index.ts";
 import { tz } from "@date-fns/tz";
 

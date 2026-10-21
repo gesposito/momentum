@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lightFormat } from "./index.ts";
+import { lightFormat } from "date-fns";
 
 describe("lightFormat", () => {
   const date = new Date(1986, 3 /* Apr */, 4, 10, 32, 55, 123);

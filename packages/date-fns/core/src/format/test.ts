@@ -8,8 +8,8 @@ import {
   type MockInstance,
   vi,
 } from "vitest";
-import type { FormatPart } from "../types.ts";
-import { format, formatDate } from "./index.ts";
+import type { FormatPart } from "date-fns";
+import { format, formatDate } from "date-fns";
 
 describe("format", () => {
   const date = new Date(1986, 3 /* Apr */, 4, 10, 32, 55, 123);
