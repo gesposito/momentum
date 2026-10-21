@@ -5,5 +5,5 @@ linker = "hoisted"
 
 [test]
 preload = ["./packages/luxon/test/setupTests.js"]
-# Day.js's own test suite, vendored in packages/dayjs, runs through packages/migrate/scripts/test-dayjs-suite.ts
-pathIgnorePatterns = ["packages/dayjs/**"]
+# the vendored test suites of Day.js and date-fns run through packages/migrate/scripts/test-*-suite.ts
+pathIgnorePatterns = ["packages/dayjs/**", "packages/date-fns/**"]
