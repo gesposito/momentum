@@ -68,34 +68,12 @@ which resolve a skipped or repeated wall-clock time like Temporal's `"compatible
 so setters and the ends of units become `with(fields, { offset: "ignore" })`. When the whole
 project switches, the imports of dayjs and its plugins go, with the `dayjs.extend(...)` statements.
 
-| Day.js | Temporal | |
-| --- | --- | --- |
-| `dayjs()`, `dayjs.utc()` | `Temporal.Now.zonedDateTimeISO()`, to the millisecond | exact |
-| `dayjs(isoString)`, `dayjs(ms)`, `dayjs.unix(s)` | `Temporal.PlainDateTime.from(...)`, `Temporal.Instant.from(...)`, `Temporal.Instant.fromEpochMilliseconds(...)` | exact for literals |
-| `year()` to `millisecond()`, `get(unit)`, `daysInMonth()` | the fields (`month - 1`, `dayOfWeek % 7`) | exact |
-| `date(n)`, `hour(n)` to `millisecond(n)`, `set(unit, n)` | `.with({ ... }, { offset: "ignore" })` | exact in range |
-| `year(n)`, `month(n)`, months and years in `add` | `.with(...)`, `.add({ months })` | differ: `dayjs-dst-steps` |
-| `add(n, unit)`, `subtract(n, unit)` up to weeks | `.add({ [unit]s: n })` | exact for literals other than 0 |
-| `startOf(unit)`, `endOf(unit)` up to years | `.startOfDay()`, `.with(...)` | exact up to days; years and months differ: `dayjs-years` (weeks: none) |
-| `isBefore`, `isAfter`, `isSame` | `Temporal.ZonedDateTime.compare` | exact (`isSame` with a unit: none) |
-| `diff(other, unit)` up to hours | epoch milliseconds, divided and truncated | exact (days and longer: none) |
-| `valueOf()`, `unix()`, `toDate()`, `toISOString()`, `toJSON()`, `toString()`, `clone()` | `.epochMilliseconds`, `new Date(...)`, `.toInstant().toString(...)` | exact |
-| `format()` with `HH:mm` and a few other fixed patterns | `.toPlainTime()` or `.toPlainDate()` and `.toString(...)` | exact for times; dates differ: `dayjs-years` |
-| `utc()`, `local()`, `isDayjs(x)` | `.withTimeZone(...)`, `x instanceof Temporal.ZonedDateTime` | exact |
-| `tz(zone)`, `dayjs.tz(...)`, `dayjs.tz.guess()` | `.withTimeZone(zone)`, `Temporal.Now.timeZoneId()` | timezone plugin: `dayjs-tz` |
+Method by method, what the tool rewrites for Day.js, what differs and what has no replacement, and how
+Day.js's plugins affect it, is in the [Day.js page](https://github.com/gesposito/momentum/blob/main/packages/dayjs/README.md)
+of the repository, with a benchmark of Day.js against the Temporal that replaces it.
 
-What has no replacement: other format tokens, locales, the start of a week, `isSame` with a unit,
-`diff` in days and longer units, and what Day.js's other plugins add. In a project that uses the
-timezone plugin, values in a zone keep a fixed offset through arithmetic, so its arithmetic carries
-`dayjs-zones`. `packages/migrate/test/migrateDayjs.test.js` checks each exact rewrite against Day.js itself.
-
-Plugins that patch the methods the tool rewrites count for the whole project. With badMutable
-nothing is rewritten, since values become mutable; with preParsePostFormat, parsing and `format`
-are left alone, and with advancedFormat, `format` patterns with `S`. devHelper's warnings go with
-the calls it watches (`dayjs(...)`, `dayjs.utc(...)`, `dayjs.unix(...)`, `diff`), which carry
-`dayjs-plugins`, as does every rewrite in a project that passes `dayjs.extend` a plugin the tool
-cannot identify. The other official plugins add inputs, units and tokens that the rewrites leave
-alone.
+`packages/migrate/test/migrateDayjs.test.js` checks each exact rewrite against Day.js itself, and
+`bun run test:dayjs-suite` runs Day.js's own test suite before and after the rewrites (see below).
 
 ## Documented differences
 

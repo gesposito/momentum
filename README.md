@@ -12,7 +12,7 @@ bridge is meant to be temporary, and its tooling is built to take it down.
 | --- | --- |
 | [`@momentum-js/luxon`](packages/luxon/README.md) | Luxon 3.7's `DateTime`, `Duration`, `Interval`, `Info`, `Settings` and zones, with the same methods, options, parsing and formatting, on native Temporal or on temporal-polyfill; verified by Luxon's own test suite |
 | [`@momentum-js/migrate`](docs/migrate.md) | `npx @momentum-js/migrate check <project>` finds every Luxon, momentum or Day.js use with TypeScript's type checker and reports whether the exact rewrites complete the switch to native Temporal; `apply` writes them |
-| [`packages/dayjs`](packages/dayjs) | Day.js 1.11.23's code and test suite, vendored with Day.js's history, as the reference the migration tool's Day.js rules are checked against |
+| [Day.js](packages/dayjs/README.md) | Day.js 1.11.23's code and test suite, vendored with Day.js's history: the reference the migration tool's Day.js rules are checked against, and a benchmark of Day.js against the Temporal that replaces it |
 
 ```sh
 bun add @momentum-js/luxon            # Luxon's API on Temporal
@@ -77,6 +77,7 @@ bun run sync-tests      # re-vendor the tests from a luxon checkout (default ../
 bun run test:dayjs-suite    # Day.js's own suite, before and after the migration tool's rewrites
 bun run sync-dayjs      # re-vendor Day.js's code and tests from a checkout (default ../dayjs)
 bun run migrate check <project>   # how far a project is from native Temporal (docs/migrate.md)
+```
 
 The tests come in three groups, plus Day.js's. Luxon's suite fills `packages/luxon/test/`;
 `bun run sync-tests` vendors it from a Luxon checkout and it is never edited by hand.
@@ -122,6 +123,9 @@ Bun's `bun fmt` is not part of a released version yet.
 
 ## License
 
-MIT. `@momentum-js/luxon`'s API, documentation comments, parsers, formatters and tests derive from
-Luxon, and `packages/dayjs` holds Day.js's code and tests under Day.js's own MIT license; see
-[LICENSE.md](LICENSE.md).
+MIT, see [LICENSE.md](LICENSE.md).
+
+- `@momentum-js/luxon`: the API, documentation comments, parsers, formatters and tests derive from
+  [Luxon](https://github.com/moment/luxon), MIT, JS Foundation and other contributors.
+- `packages/dayjs`: Day.js's code and tests under Day.js's own MIT license,
+  [packages/dayjs/LICENSE](packages/dayjs/LICENSE).

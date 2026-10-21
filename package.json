@@ -29,6 +29,8 @@
     "benchmark:node": "bun run --cwd packages/luxon benchmark:node",
     "benchmark:memory": "bun run --cwd packages/luxon benchmark:memory",
     "benchmark:memory:node": "bun run --cwd packages/luxon benchmark:memory:node",
+    "benchmark:dayjs": "bun packages/dayjs/benchmarks/index.ts",
+    "benchmark:dayjs:node": "node packages/dayjs/benchmarks/index.ts",
     "sync-tests": "bun packages/luxon/scripts/sync-tests.ts",
     "sync-dayjs": "bun packages/dayjs/scripts/sync.ts"
   },
