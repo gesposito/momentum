@@ -70,6 +70,7 @@ bun run test:polyfill   # the same suite with the polyfill forced
 bun run test:opt-out    # the same suite with Settings.temporalNative = false
 bun run test:bun        # the same suite on bun test, on Bun's native Temporal
 bun run typecheck       # type check of both packages
+bun fmt                 # format the code (bun fmt --check: fail if a file needs formatting)
 bun run build           # bundles + declarations
 bun run benchmark       # Luxon's benchmark cases, ported to mitata (Bun)
 bun run benchmark:compare   # side by side with luxon (Bun)
@@ -126,8 +127,15 @@ module, and compares strings containing U+202F with Luxon's own whitespace-toler
 because Node 26 and Bun replace the U+202F that CLDR puts between a time and its AM/PM marker
 with a regular space. `packages/dayjs/scripts/sync.ts` does the same for Day.js, pointing its
 tests' imports at the dayjs package's entry points, and `packages/date-fns/scripts/sync.ts` for
-date-fns. The repository has no formatter configured:
-Bun's `bun fmt` is not part of a released version yet.
+date-fns.
+
+The code is formatted with `bun fmt`, Bun's Prettier-compatible formatter, with the options in
+the `[fmt]` section of `bunfig.toml`: lines of 100 columns and trailing commas where ES5 allows
+them, the style Luxon's code came with. It leaves out the vendored code, which stays as its
+authors wrote it, the migration tool's fixture projects, which its tests compare byte for byte,
+and Markdown, which is wrapped by hand. `bun fmt --check` fails when a file needs formatting, and
+`bun fmt --staged` formats just the files about to be committed. The root `tsconfig.json` only
+references the two packages, so `bun check` at the root type-checks both, like `tsc -b`.
 
 ## License
 

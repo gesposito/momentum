@@ -159,5 +159,3 @@ reported.
   test needs a writable checkout, unlike under Jest.
 - Bun's loader rejects `packages/luxon/test/helpers.js` as Luxon ships it (ESM imports next to CommonJS
   `exports`); `packages/luxon/scripts/sync-tests.ts` converts it to an ES module.
-- `bun fmt` is documented but not part of any released Bun (latest 1.4.3, 2026-10-10; the
-  formatter landed on main on 2026-10-16/17). The repository has no formatter until it ships.

@@ -7,3 +7,26 @@ linker = "hoisted"
 preload = ["./packages/luxon/test/setupTests.js"]
 # the vendored test suites of Day.js and date-fns run through packages/migrate/scripts/test-*-suite.ts
 pathIgnorePatterns = ["packages/dayjs/**", "packages/date-fns/**"]
+
+[fmt]
+# bun fmt: Prettier's options, in the style Luxon's code came with
+printWidth = 100
+trailingComma = "es5"
+ignorePatterns = [
+  # Markdown is wrapped by hand, with tables in the compact form that Prettier would pad
+  "*.md",
+  # vendored as they are, by the sync scripts
+  "packages/dayjs/src/",
+  "packages/dayjs/test/",
+  "packages/dayjs/types/",
+  "packages/date-fns/core/",
+  "packages/date-fns/tz/",
+  "packages/date-fns/utc/",
+  # Luxon's tests, vendored by packages/luxon/scripts/sync-tests.ts, apart from momentum's own
+  "packages/luxon/test/*",
+  "!packages/luxon/test/setupTests.js",
+  "!packages/luxon/test/parity/",
+  "!packages/luxon/test/momentum/",
+  # the migration tool's fixture projects and their reviewed outputs, compared byte for byte
+  "packages/migrate/test/fixtures/",
+]
