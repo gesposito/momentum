@@ -15,7 +15,7 @@ behaves identically on both paths, and since Bun 1.4.4 one test of the migration
 
 Bun on macOS links the system's ICU (`/usr/lib/libicucore.A.dylib`, ICU 78.1 with Apple's locale
 data), while its Linux and Windows builds bundle ICU 78.3, the version Node 26 ships. The same Bun
-build gives Node's results on Linux (checked with the `oven/bun:1.4.3` image), and macOS's own
+build gives Node's results on Linux (checked with the `oven/bun:1.4.3` and `oven/bun:1.4.4` images), and macOS's own
 `jsc` gives Bun's results on macOS. [oven-sh/bun#40085](https://github.com/oven-sh/bun/issues/40085)
 (open) reports section 2, and
 [a comment on it](https://github.com/oven-sh/bun/issues/40085#issuecomment-6265812438) the others.
@@ -126,7 +126,8 @@ work. Affects `DateTime#setZone accepts whacky zone "EST5EDT"` and `"PST8PDT"`, 
 valid DateTime: momentum gets the engine's `RangeError` and returns an invalid one, as for any
 zone the engine does not know. The same eight names, these four and `CET`, `EET`, `MET`, `WET`,
 failed on Linux in Bun 1.3.14 ([oven-sh/bun#30618](https://github.com/oven-sh/bun/issues/30618),
-closed by the update to ICU 78); 1.4.4 was not re-checked on Linux. Reported as
+closed by the update to ICU 78), and work there in 1.4.4: the `oven/bun:1.4.4` image, the same
+revision with the bundled ICU 78.3, accepts all eight, so this is macOS only. Reported as
 [oven-sh/bun#46865](https://github.com/oven-sh/bun/issues/46865).
 
 ## With temporal-polyfill, since Bun 1.4.4
@@ -143,14 +144,15 @@ b.since(a, { largestUnit: "days" }); // Node 26: P1D; Bun 1.4.4: RangeError: Mis
 
 temporal-polyfill 1.0.6 identifies a zone by what `Intl.DateTimeFormat`'s `resolvedOptions()`
 returns as its `timeZone`, which V8 canonicalizes (`Asia/Kolkata` gives `Asia/Calcutta`). The
-JavaScriptCore of Bun 1.4.4 returns the identifier as given, as the specification now requires
-(test262's `intl402/DateTimeFormat/timezone-not-canonicalized.js`), so the polyfill takes
-`Asia/Calcutta` and `Asia/Kolkata` for different zones: `equals` is false, and `since` and
-`until` in days or longer units throw. Bun's native Temporal gets both right. Under
-`MOMENTUM_TEMPORAL=polyfill bun test`, this fails the migration tool's
+JavaScriptCore of Bun 1.4.4, on macOS and Linux alike, returns the identifier as given, as the
+specification now requires (test262's `intl402/DateTimeFormat/timezone-not-canonicalized.js`),
+so the polyfill takes `Asia/Calcutta` and `Asia/Kolkata` for different zones: `equals` is false,
+and `since` and `until` in days or longer units throw. Bun's native Temporal gets both right.
+Under `MOMENTUM_TEMPORAL=polyfill bun test`, this fails the migration tool's
 `each documented difference is real > link-name-equality`, which expects Temporal to treat the
 two names as one zone; momentum compares zone names itself, so the library is not affected.
-Reported as [fullcalendar/temporal-polyfill#118](https://github.com/fullcalendar/temporal-polyfill/issues/118).
+Reported as
+[fullcalendar/temporal-polyfill#118](https://github.com/fullcalendar/temporal-polyfill/issues/118).
 
 ## Other differences handled in the test setup
 
