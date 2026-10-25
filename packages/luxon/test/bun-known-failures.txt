@@ -26,3 +26,6 @@ DateTime.fromFormatExplain() parses localized string with numberingSystem correc
 Duration#toFormat localizes the numbers
 Info.months respects the locale
 Interval#toLocaleString uses locale-appropriate time formats
+# since Bun 1.4.4, JavaScriptCore on macOS rejects the POSIX-style US zones (section 8)
+DateTime#setZone accepts whacky zone "EST5EDT"
+DateTime#setZone accepts whacky zone "PST8PDT"
