@@ -105,7 +105,9 @@ move the later date by the whole calendar difference with `setMonth`, so on Bun 
 for spans of more than about 273,790 years, and the property tests that compare them with
 Temporal (`packages/migrate/test/migrateDateFns.test.js`) keep their pairs within that width where
 a probe finds the bug. Not a test of Luxon's suite, so not in the allowlist. Reported as
-[oven-sh/bun#46342](https://github.com/oven-sh/bun/issues/46342).
+[oven-sh/bun#46342](https://github.com/oven-sh/bun/issues/46342): a guard in JavaScriptCore's
+`DatePrototype.cpp` checks the month count instead of the resulting year, and the fix,
+[oven-sh/WebKit#616](https://github.com/oven-sh/WebKit/pull/616), is in review.
 
 ## macOS only, since Bun 1.4.4
 
@@ -119,13 +121,13 @@ Temporal.Now.zonedDateTimeISO("EST5EDT"); // RangeError: 'EST5EDT' is not a vali
 `EST5EDT`, `CST6CDT`, `MST7MDT` and `PST8PDT` are IANA names, links to the US city zones since
 tzdata 2024b. Node accepts them, and so did Bun 1.4.3 on the same Mac; Bun 1.4.4, whose
 JavaScriptCore upgrade brings 1,013 WebKit commits, throws for them in `Intl.DateTimeFormat` and
-in Temporal alike, and leaves them out of `Intl.supportedValuesOf("timeZone")`. The other legacy
-names (`CET`, `EET`, `MET`, `WET`, `EST`, `MST`, `HST`) still work. Affects
-`DateTime#setZone accepts whacky zone "EST5EDT"` and `"PST8PDT"`, which expect a valid
-DateTime: momentum gets the engine's `RangeError` and returns an invalid one, as for any zone
-the engine does not know. The same eight names, these four and `CET`, `EET`, `MET`, `WET`,
+in Temporal alike. The other legacy names (`CET`, `EET`, `MET`, `WET`, `EST`, `MST`, `HST`) still
+work. Affects `DateTime#setZone accepts whacky zone "EST5EDT"` and `"PST8PDT"`, which expect a
+valid DateTime: momentum gets the engine's `RangeError` and returns an invalid one, as for any
+zone the engine does not know. The same eight names, these four and `CET`, `EET`, `MET`, `WET`,
 failed on Linux in Bun 1.3.14 ([oven-sh/bun#30618](https://github.com/oven-sh/bun/issues/30618),
-closed by the update to ICU 78); 1.4.4 was not re-checked on Linux. To be reported.
+closed by the update to ICU 78); 1.4.4 was not re-checked on Linux. Reported as
+[oven-sh/bun#46865](https://github.com/oven-sh/bun/issues/46865).
 
 ## With temporal-polyfill, since Bun 1.4.4
 
@@ -147,8 +149,8 @@ JavaScriptCore of Bun 1.4.4 returns the identifier as given, as the specificatio
 `until` in days or longer units throw. Bun's native Temporal gets both right. Under
 `MOMENTUM_TEMPORAL=polyfill bun test`, this fails the migration tool's
 `each documented difference is real > link-name-equality`, which expects Temporal to treat the
-two names as one zone; momentum compares zone names itself, so the library is not affected. To be
-reported.
+two names as one zone; momentum compares zone names itself, so the library is not affected.
+Reported as [fullcalendar/temporal-polyfill#118](https://github.com/fullcalendar/temporal-polyfill/issues/118).
 
 ## Other differences handled in the test setup
 
