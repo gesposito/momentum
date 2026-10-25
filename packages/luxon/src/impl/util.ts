@@ -84,10 +84,13 @@ export function bestBy<T, U>(
 }
 
 export function pick<T extends object, K extends keyof T>(obj: T, keys: readonly K[]): Pick<T, K> {
-  return keys.reduce((a, k) => {
-    a[k] = obj[k];
-    return a;
-  }, {} as Pick<T, K>);
+  return keys.reduce(
+    (a, k) => {
+      a[k] = obj[k];
+      return a;
+    },
+    {} as Pick<T, K>
+  );
 }
 
 export function hasOwnProperty(obj: object, prop: string): boolean {

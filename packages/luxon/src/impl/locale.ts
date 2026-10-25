@@ -87,7 +87,10 @@ function systemLocale(): string {
   }
 }
 
-const intlResolvedOptionsCache = /* @__PURE__ */ new Map<string, Intl.ResolvedDateTimeFormatOptions>();
+const intlResolvedOptionsCache = /* @__PURE__ */ new Map<
+  string,
+  Intl.ResolvedDateTimeFormatOptions
+>();
 function getCachedIntResolvedOptions(locString: string): Intl.ResolvedDateTimeFormatOptions {
   let opts = intlResolvedOptionsCache.get(locString);
   if (opts === undefined) {
@@ -107,7 +110,9 @@ function getCachedWeekInfo(locString: string): WeekSettings {
     };
     // browsers currently implement this as a property, but spec says it should be a getter function
     let info: Partial<WeekSettings> =
-      typeof locale.getWeekInfo === "function" ? locale.getWeekInfo() : (locale.weekInfo as Partial<WeekSettings>);
+      typeof locale.getWeekInfo === "function"
+        ? locale.getWeekInfo()
+        : (locale.weekInfo as Partial<WeekSettings>);
     // minimalDays was removed from WeekInfo: https://github.com/tc39/proposal-intl-locale-info/issues/86
     if (!("minimalDays" in info)) {
       info = { ...fallbackWeekSettings, ...info };
@@ -370,12 +375,7 @@ export class PolyRelFormatter {
     if (this.rtf) {
       return this.rtf.format(count, unit as Intl.RelativeTimeFormatUnit);
     } else {
-      return English.formatRelativeTime(
-        unit,
-        count,
-        this.opts.numeric,
-        this.opts.style !== "long"
-      );
+      return English.formatRelativeTime(unit, count, this.opts.numeric, this.opts.style !== "long");
     }
   }
 

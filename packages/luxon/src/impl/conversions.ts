@@ -84,7 +84,10 @@ export function dayOfWeek(year: number, month: number, day: number): number {
 // a fractional ordinal counts its whole days (0.5 is the last day of the previous year); ordinals
 // of 0 or less and unrepresentable dates give NaN fields. Whole 400-year cycles are taken out of
 // the ordinal first, so that Temporal only ever computes dates near the year 2000.
-function ordinalToDate(year: number, ordinal: number): { year: number; month: number; day: number } {
+function ordinalToDate(
+  year: number,
+  ordinal: number
+): { year: number; month: number; day: number } {
   if (ordinal > 0 && Number.isFinite(year)) {
     const days = Math.trunc(ordinal) - 1,
       cycles = Math.floor(days / 146097),

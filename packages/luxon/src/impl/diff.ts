@@ -13,7 +13,12 @@ function highOrderDiffs(
   cursor: DateTime,
   later: DateTime,
   units: DurationUnit[]
-): [DateTime, Partial<Record<DurationUnit, number>>, DateTime | undefined, DurationUnit | undefined] {
+): [
+  DateTime,
+  Partial<Record<DurationUnit, number>>,
+  DateTime | undefined,
+  DurationUnit | undefined,
+] {
   const differs: [DurationUnit, (a: DateTime, b: DateTime) => number][] = [
     ["years", (a, b) => b.year - a.year],
     ["quarters", (a, b) => b.quarter - a.quarter + (b.year - a.year) * 4],

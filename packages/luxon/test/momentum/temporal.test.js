@@ -165,7 +165,11 @@ describe("Temporal-backed zones", () => {
     expect(IANAZone.normalizeZone("etc/gmt")).toBe("UTC");
     expect(IANAZone.normalizeZone("GMT0")).toBe("UTC");
     expect(IANAZone.normalizeZone("Etc/GMT+8")).toBe("Etc/GMT+8");
-    for (const iso of ["2020-01-01T00:00[Europe/Rome]", "2020-01-01T00:00Z", "2020-01-01T00:00+01:00"]) {
+    for (const iso of [
+      "2020-01-01T00:00[Europe/Rome]",
+      "2020-01-01T00:00Z",
+      "2020-01-01T00:00+01:00",
+    ]) {
       expect(IANAZone.normalizeZone(iso)).toBe(null);
       expect(DateTime.now().setZone(iso).invalidReason).toBe("unsupported zone");
     }

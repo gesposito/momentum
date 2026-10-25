@@ -64,11 +64,7 @@ export function dayOfWeek(year: number, month: number, day: number): number {
  */
 export function msFromCivil(fields: GregorianDateTime): number {
   const ms =
-    daysFromCivil(
-      Math.trunc(fields.year),
-      Math.trunc(fields.month),
-      Math.trunc(fields.day)
-    ) *
+    daysFromCivil(Math.trunc(fields.year), Math.trunc(fields.month), Math.trunc(fields.day)) *
       MS_PER_DAY +
     Math.trunc(fields.hour) * 3600000 +
     Math.trunc(fields.minute) * 60000 +

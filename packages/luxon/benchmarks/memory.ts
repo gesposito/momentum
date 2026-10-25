@@ -79,7 +79,9 @@ function retainedPerInstance(make: (i: number) => unknown, count: number): Retai
   const result = {
     bytes: (heapBytes() - bytesBefore) / count,
     objects:
-      objectsBefore === null || objectsAfter === null ? null : (objectsAfter - objectsBefore) / count,
+      objectsBefore === null || objectsAfter === null
+        ? null
+        : (objectsAfter - objectsBefore) / count,
   };
   if (keep.length !== count) throw new Error("unreachable");
   return result;
@@ -103,14 +105,19 @@ function instanceCases({ DateTime, Duration, Interval }: Lib): [string, (i: numb
   const start = DateTime.fromMillis(base);
   return [
     ["DateTime (system zone)", (i) => DateTime.fromMillis(base + i * 60000)],
-    ["DateTime (IANA zone)", (i) => DateTime.fromMillis(base + i * 60000, { zone: "Europe/Paris" })],
+    [
+      "DateTime (IANA zone)",
+      (i) => DateTime.fromMillis(base + i * 60000, { zone: "Europe/Paris" }),
+    ],
     ["Duration", (i) => Duration.fromObject({ hours: i, minutes: 30 })],
     ["Interval", (i) => Interval.fromDateTimes(start, start.plus({ minutes: i + 1 }))],
   ];
 }
 
 const perInstance = (r: Retained) =>
-  r.objects === null ? `${r.bytes.toFixed(0)} B` : `${r.bytes.toFixed(0)} B / ${r.objects.toFixed(1)} objects`;
+  r.objects === null
+    ? `${r.bytes.toFixed(0)} B`
+    : `${r.bytes.toFixed(0)} B / ${r.objects.toFixed(1)} objects`;
 
 const runtime = isBun ? `bun ${Bun.version}` : `node ${process.versions.node}`;
 const engine =

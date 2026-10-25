@@ -144,7 +144,10 @@ export default class Formatter {
     );
   }
 
-  resolvedOptions(dt: DateTime, opts?: Intl.DateTimeFormatOptions): Intl.ResolvedDateTimeFormatOptions {
+  resolvedOptions(
+    dt: DateTime,
+    opts?: Intl.DateTimeFormatOptions
+  ): Intl.ResolvedDateTimeFormatOptions {
     return this.dtFormatter(dt, opts).resolvedOptions();
   }
 
@@ -249,7 +252,10 @@ export default class Formatter {
             return formatOffset({ format: "techie", allowZ: this.opts.allowZ });
           case "ZZZZ":
             // like EST
-            return dt.zone.offsetName(dt.ts, { format: "short", locale: this.loc.locale }) as string;
+            return dt.zone.offsetName(dt.ts, {
+              format: "short",
+              locale: this.loc.locale,
+            }) as string;
           case "ZZZZZ":
             // like Eastern Standard Time
             return dt.zone.offsetName(dt.ts, { format: "long", locale: this.loc.locale }) as string;
@@ -461,9 +467,7 @@ export default class Formatter {
         (found, { literal, val }) => (literal ? found : found.concat(val)),
         []
       ),
-      collapsed = dur.shiftTo(
-        ...(realTokens.map(tokenToField).filter((t) => t) as DurationUnit[])
-      ),
+      collapsed = dur.shiftTo(...(realTokens.map(tokenToField).filter((t) => t) as DurationUnit[])),
       durationInfo = {
         isNegativeDuration: collapsed.valueOf() < 0,
         // this relies on "collapsed" being based on "shiftTo", which builds up the object

@@ -6,15 +6,7 @@ import type Locale from "./impl/locale.js";
 // UNITS
 
 export type DateTimeUnit =
-  | "year"
-  | "quarter"
-  | "month"
-  | "week"
-  | "day"
-  | "hour"
-  | "minute"
-  | "second"
-  | "millisecond";
+  "year" | "quarter" | "month" | "week" | "day" | "hour" | "minute" | "second" | "millisecond";
 export type DateTimeUnitPlural = `${DateTimeUnit}s`;
 
 export type DurationUnit =
@@ -28,26 +20,11 @@ export type DurationUnit =
   | "seconds"
   | "milliseconds";
 export type DurationUnitSingular =
-  | "year"
-  | "quarter"
-  | "month"
-  | "week"
-  | "day"
-  | "hour"
-  | "minute"
-  | "second"
-  | "millisecond";
+  "year" | "quarter" | "month" | "week" | "day" | "hour" | "minute" | "second" | "millisecond";
 export type DurationUnits = DurationUnit | DurationUnitSingular;
 
 export type ToRelativeUnit =
-  | "years"
-  | "quarters"
-  | "months"
-  | "weeks"
-  | "days"
-  | "hours"
-  | "minutes"
-  | "seconds";
+  "years" | "quarters" | "months" | "weeks" | "days" | "hours" | "minutes" | "seconds";
 export type ToRelativeCalendarUnit = "years" | "quarters" | "months" | "weeks" | "days";
 
 export type ConversionAccuracy = "casual" | "longterm";

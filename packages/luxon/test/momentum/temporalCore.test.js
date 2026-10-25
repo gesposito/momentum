@@ -91,7 +91,10 @@ describe("wall-clock resolution", () => {
     expect(lordHowe.wasHole).toBe(true);
 
     // Samoa skipped 2011-12-30 when it moved across the date line
-    const apia = DateTime.fromObject({ year: 2011, month: 12, day: 30, hour: 12 }, { zone: "Pacific/Apia" });
+    const apia = DateTime.fromObject(
+      { year: 2011, month: 12, day: 30, hour: 12 },
+      { zone: "Pacific/Apia" }
+    );
     expect(apia.toISO()).toBe("2011-12-31T12:00:00.000+14:00");
     expect(apia.wasHole).toBe(true);
   });
@@ -108,7 +111,10 @@ describe("wall-clock resolution", () => {
   });
 
   test("sub-minute offsets of local mean time are kept", () => {
-    const rome = DateTime.fromObject({ year: 1800, month: 1, day: 1, hour: 12 }, { zone: "Europe/Rome" });
+    const rome = DateTime.fromObject(
+      { year: 1800, month: 1, day: 1, hour: 12 },
+      { zone: "Europe/Rome" }
+    );
     expect(rome.offset).toBeCloseTo(49.9333, 3);
     expect(rome.toISO()).toBe("1800-01-01T12:00:00.000+00:49");
     expect(rome.toMillis()).toBe(Date.UTC(1800, 0, 1, 11, 10, 4));
@@ -147,7 +153,9 @@ describe("wall-clock resolution", () => {
     const last = DateTime.fromMillis(8.64e15, { zone: "America/New_York" });
     expect(last.set({ hour: 19 }).toISO()).toBe("+275760-09-12T19:00:00.000-04:00");
     expect(last.set({ hour: 21 }).invalidReason).toBe("invalid input");
-    expect(DateTime.fromMillis(8.64e15, { zone: "Asia/Tokyo" }).invalidReason).toBe("invalid input");
+    expect(DateTime.fromMillis(8.64e15, { zone: "Asia/Tokyo" }).invalidReason).toBe(
+      "invalid input"
+    );
     const lastDay = DateTime.fromMillis(8.64e15 - 9 * 3600000, { zone: "Asia/Tokyo" });
     expect(lastDay.set({ hour: 0 }).toISO()).toBe("+275760-09-13T00:00:00.000+09:00");
   });
@@ -357,12 +365,18 @@ describe("getPossibleOffsets", () => {
       "2017-04-02T01:45:00.000+10:30",
     ]);
     // Samoa lived through 1892-07-04 twice when it moved east of the date line
-    const apia = DateTime.fromObject({ year: 1892, month: 7, day: 4, hour: 12 }, { zone: "Pacific/Apia" });
+    const apia = DateTime.fromObject(
+      { year: 1892, month: 7, day: 4, hour: 12 },
+      { zone: "Pacific/Apia" }
+    );
     expect(apia.getPossibleOffsets().map((d) => d.offset)).toEqual([753 + 4 / 60, -686 - 56 / 60]);
   });
 
   test("returns the DateTime itself when the wall clock is unambiguous", () => {
-    const dt = DateTime.fromObject({ year: 2017, month: 4, day: 2, hour: 3 }, { zone: "Australia/Lord_Howe" });
+    const dt = DateTime.fromObject(
+      { year: 2017, month: 4, day: 2, hour: 3 },
+      { zone: "Australia/Lord_Howe" }
+    );
     expect(dt.getPossibleOffsets()).toEqual([dt]);
     expect(dt.getPossibleOffsets()[0]).toBe(dt);
     const first = DateTime.fromMillis(-8.64e15, { zone: "America/New_York" });
@@ -377,9 +391,9 @@ describe("calendar arithmetic", () => {
     expect(jan31.plus({ months: 1 }).toISODate()).toBe("2017-02-28");
     expect(jan31.plus({ months: 1, days: 1 }).toISODate()).toBe("2017-03-01");
     expect(jan31.plus({ months: 1, days: -1 }).toISODate()).toBe("2017-02-27");
-    expect(jan31.plus({ months: 1, days: -1 }).equals(jan31.plus({ months: 1 }).plus({ days: -1 }))).toBe(
-      true
-    );
+    expect(
+      jan31.plus({ months: 1, days: -1 }).equals(jan31.plus({ months: 1 }).plus({ days: -1 }))
+    ).toBe(true);
     expect(jan31.plus({ years: 3, months: 1 }).toISODate()).toBe("2020-02-29");
     expect(jan31.minus({ quarters: 1 }).toISODate()).toBe("2016-10-31");
   });
@@ -392,10 +406,16 @@ describe("calendar arithmetic", () => {
   });
 
   test("keeps the wall clock across transitions, unlike time units", () => {
-    const ny = DateTime.fromObject({ year: 2017, month: 3, day: 11, hour: 12 }, { zone: "America/New_York" });
+    const ny = DateTime.fromObject(
+      { year: 2017, month: 3, day: 11, hour: 12 },
+      { zone: "America/New_York" }
+    );
     expect(ny.plus({ days: 1 }).toISO()).toBe("2017-03-12T12:00:00.000-04:00");
     expect(ny.plus({ hours: 24 }).toISO()).toBe("2017-03-12T13:00:00.000-04:00");
-    const apia = DateTime.fromObject({ year: 2011, month: 12, day: 29, hour: 12 }, { zone: "Pacific/Apia" });
+    const apia = DateTime.fromObject(
+      { year: 2011, month: 12, day: 29, hour: 12 },
+      { zone: "Pacific/Apia" }
+    );
     expect(apia.plus({ days: 1 }).toISO()).toBe("2011-12-31T12:00:00.000+14:00");
     expect(apia.plus({ days: 1 }).wasHole).toBe(true);
     expect(apia.plus({ days: 2 }).toISO()).toBe("2011-12-31T12:00:00.000+14:00");
@@ -492,8 +512,14 @@ describe("custom zones", () => {
   });
 
   test("support math, set, startOf and getPossibleOffsets", () => {
-    const custom = DateTime.fromObject({ year: 2017, month: 11, day: 4, hour: 1, minute: 30 }, { zone }),
-      iana = DateTime.fromObject({ year: 2017, month: 11, day: 4, hour: 1, minute: 30 }, { zone: reference });
+    const custom = DateTime.fromObject(
+        { year: 2017, month: 11, day: 4, hour: 1, minute: 30 },
+        { zone }
+      ),
+      iana = DateTime.fromObject(
+        { year: 2017, month: 11, day: 4, hour: 1, minute: 30 },
+        { zone: reference }
+      );
     expect(custom.plus({ days: 1 }).toISO()).toBe(iana.plus({ days: 1 }).toISO());
     expect(custom.plus({ hours: 24 }).toISO()).toBe(iana.plus({ hours: 24 }).toISO());
     expect(custom.set({ month: 3, day: 12, hour: 2 }).toISO()).toBe(

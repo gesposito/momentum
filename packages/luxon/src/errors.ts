@@ -67,7 +67,7 @@ export class ZoneIsAbstractError extends MomentumError {
 export class TemporalUnavailableError extends MomentumError {
   constructor() {
     super(
-      "Temporal is not available in this environment. Import a polyfill before using momentum, e.g. `import \"@momentum-js/luxon/polyfill\"`."
+      'Temporal is not available in this environment. Import a polyfill before using momentum, e.g. `import "@momentum-js/luxon/polyfill"`.'
     );
     this.name = "TemporalUnavailableError";
   }

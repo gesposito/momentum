@@ -218,8 +218,7 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
       ).size <= 1;
     // date-fns adds the months before the days, so a time skipped at that step shifts the result
     // (date-fns-dst-steps): the properties keep to dates whose time exists after the months
-    const steps = (dur) =>
-      ("years" in dur || "months" in dur) && ("weeks" in dur || "days" in dur);
+    const steps = (dur) => ("years" in dur || "months" in dur) && ("weeks" in dur || "days" in dur);
     const timeKept = (d, dur, verb) => {
       const z = zonedOf(d);
       const months = { years: dur.years ?? 0, months: dur.months ?? 0 };
@@ -675,25 +674,29 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
       );
     fc.assert(
       fc.property(since1000, (d) =>
-        same(dateFns.formatRFC7231(d), evaluate(dated(rule("formatRFC7231").apply(ctx([dateArg("d")])), ["invalid-throws", "date-fns-years"]), { d }))
+        same(
+          dateFns.formatRFC7231(d),
+          evaluate(
+            dated(rule("formatRFC7231").apply(ctx([dateArg("d")])), [
+              "invalid-throws",
+              "date-fns-years",
+            ]),
+            { d }
+          )
+        )
       )
     );
     // formatISO writes Z for a zero offset where Temporal writes +00:00: iso-format
     if (zoneHasOffsets)
       fc.assert(
-        fc.property(
-          wholeSecondsBefore1970(sameOffsetString(fourDigitYears)),
-          (d) =>
-            same(
-              dateFns.formatISO(d),
-              evaluate(
-                dated(rule("formatISO").apply(ctx([dateArg("d")])), [
-                  "invalid-throws",
-                  "iso-format",
-                ]),
-                { d }
-              )
+        fc.property(wholeSecondsBefore1970(sameOffsetString(fourDigitYears)), (d) =>
+          same(
+            dateFns.formatISO(d),
+            evaluate(
+              dated(rule("formatISO").apply(ctx([dateArg("d")])), ["invalid-throws", "iso-format"]),
+              { d }
             )
+          )
         )
       );
     for (const pattern of ["yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd HH:mm:ss"])
@@ -763,7 +766,9 @@ describe("exact date-fns arithmetic agrees with date-fns", () => {
 
 describe("the trailing options every function takes", () => {
   test("a literal `in` or a dynamic options object stops the rewrite", () => {
-    const context = obj({ in: { text: 'tz("Asia/Tokyo")', value: { kind: "dynamic", type: "unknown" } } });
+    const context = obj({
+      in: { text: 'tz("Asia/Tokyo")', value: { kind: "dynamic", type: "unknown" } },
+    });
     const dynamic = { text: "options", value: { kind: "dynamic", type: "object" } };
     for (const [name, args] of [
       ["startOfDay", [dateArg("d")]],

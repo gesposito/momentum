@@ -194,7 +194,10 @@ function fromStrings(
   secondStr: string | undefined
 ): ParsedValues {
   const result: ParsedValues = {
-    year: yearStr.length === 2 ? untruncateYear(parseInteger(yearStr) as number) : parseInteger(yearStr),
+    year:
+      yearStr.length === 2
+        ? untruncateYear(parseInteger(yearStr) as number)
+        : parseInteger(yearStr),
     month: English.monthsShort.indexOf(monthStr) + 1,
     day: parseInteger(dayStr),
     hour: parseInteger(hourStr),

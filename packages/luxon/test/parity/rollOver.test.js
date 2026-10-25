@@ -11,9 +11,7 @@ describe("fields far out of range", () => {
     expect(DateTime.utc(275000).set({ day: -1e8 }).toISO()).toBe("1209-04-19T00:00:00.000Z");
     expect(DateTime.utc(2017).set({ month: -3e6 }).toISO()).toBe("-247984-12-01T00:00:00.000Z");
     expect(DateTime.utc(-271000).set({ month: 3e6 }).toISO()).toBe("-021001-12-01T00:00:00.000Z");
-    expect(DateTime.utc(-271000).set({ minute: 1e11 }).toISO()).toBe(
-      "-080868-06-07T10:40:00.000Z"
-    );
+    expect(DateTime.utc(-271000).set({ minute: 1e11 }).toISO()).toBe("-080868-06-07T10:40:00.000Z");
     expect(DateTime.utc(1000).set({ hour: 2e9 }).toISO()).toBe("+229158-12-02T08:00:00.000Z");
   });
 

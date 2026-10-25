@@ -530,7 +530,12 @@ export function parseFromTokens(
   locale: Locale,
   input: string,
   format: string
-): [DateObjectUnits | null | undefined, Zone | null | undefined, number | undefined, string | null | undefined] {
+): [
+  DateObjectUnits | null | undefined,
+  Zone | null | undefined,
+  number | undefined,
+  string | null | undefined,
+] {
   const { result, zone, specificOffset, invalidReason } = explainFromTokens(locale, input, format);
   return [result, zone, specificOffset, invalidReason];
 }

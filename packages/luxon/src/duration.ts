@@ -151,7 +151,12 @@ const humanizeUnitConversion: Partial<Record<DurationUnit, DurationUnit | null>>
 // clone really means "create another instance just like this one, but with these changes"
 function clone(
   dur: Duration,
-  alts: { values?: DurationObjectUnits; loc?: Parameters<Locale["clone"]>[0]; conversionAccuracy?: ConversionAccuracy; matrix?: ConversionMatrix },
+  alts: {
+    values?: DurationObjectUnits;
+    loc?: Parameters<Locale["clone"]>[0];
+    conversionAccuracy?: ConversionAccuracy;
+    matrix?: ConversionMatrix;
+  },
   clear = false
 ): Duration {
   // deep merge for vals
@@ -686,7 +691,12 @@ export default class Duration {
    * "Set" the locale and/or numberingSystem.  Returns a newly-constructed Duration.
    * @example dur.reconfigure({ locale: 'en-GB' })
    */
-  reconfigure({ locale, numberingSystem, conversionAccuracy, matrix }: DurationOptions = {}): Duration {
+  reconfigure({
+    locale,
+    numberingSystem,
+    conversionAccuracy,
+    matrix,
+  }: DurationOptions = {}): Duration {
     const loc = this.loc.clone({ locale, numberingSystem });
     const opts = { loc, matrix, conversionAccuracy };
     return clone(this, opts);

@@ -65,7 +65,13 @@ import {
   wallClockAtOffset,
   zonedDateTime,
 } from "./impl/temporal.js";
-import type { Instant, PlainDate, PlainDateTime, PlainTime, ZonedDateTime } from "./impl/temporal.js";
+import type {
+  Instant,
+  PlainDate,
+  PlainDateTime,
+  PlainTime,
+  ZonedDateTime,
+} from "./impl/temporal.js";
 import { civilFromMs, msFromCivil } from "./impl/calendar.js";
 import { isTemporalNative } from "./impl/mode.js";
 import type Zone from "./zone.js";
@@ -152,10 +158,7 @@ type NormalizedUnit =
   | "ordinal";
 
 type NormalizedUnitWithLocalWeeks =
-  | NormalizedUnit
-  | "localWeekday"
-  | "localWeekNumber"
-  | "localWeekYear";
+  NormalizedUnit | "localWeekday" | "localWeekNumber" | "localWeekYear";
 
 function unsupportedZone(zone: Zone): Invalid {
   return new Invalid("unsupported zone", `the zone "${zone.name}" is not supported`);
@@ -1184,13 +1187,11 @@ export default class DateTime {
     const nowValues = (): Record<string, number> => {
       if (objNow === null) {
         const now = fieldsAtOffset(tsNow, offsetProvis) ?? unknownFields;
-        objNow = (
-          useWeekData
-            ? gregorianToWeek(now, minDaysInFirstWeek, startOfWeek)
-            : containsOrdinal
-              ? gregorianToOrdinal(now)
-              : now
-        ) as unknown as Record<string, number>;
+        objNow = (useWeekData
+          ? gregorianToWeek(now, minDaysInFirstWeek, startOfWeek)
+          : containsOrdinal
+            ? gregorianToOrdinal(now)
+            : now) as unknown as Record<string, number>;
       }
       return objNow;
     };
@@ -1920,11 +1921,7 @@ export default class DateTime {
     } else if (!target.isValid) {
       return DateTime.invalid(unsupportedZone(target));
     } else if ((keepLocalTime || keepCalendarTime) && this.isValid) {
-      const resolved = resolveFields(
-        fieldsOf(this),
-        target.offset(this.ts),
-        target
-      );
+      const resolved = resolveFields(fieldsOf(this), target.offset(this.ts), target);
       return clone(this, { ...(resolved ?? notRepresentable), zone: target });
     } else {
       return clone(this, { zone: target, wasHole: false });
@@ -1941,7 +1938,12 @@ export default class DateTime {
    * @example DateTime.local(2017, 5, 25).reconfigure({ locale: 'en-GB' })
    * @example DateTime.local(2017, 5, 25).reconfigure({ weekSettings: { firstDay: 1 } })
    */
-  reconfigure({ locale, numberingSystem, outputCalendar, weekSettings }: LocaleOptions = {}): DateTime {
+  reconfigure({
+    locale,
+    numberingSystem,
+    outputCalendar,
+    weekSettings,
+  }: LocaleOptions = {}): DateTime {
     const loc = this.loc.clone({ locale, numberingSystem, outputCalendar, weekSettings });
     return clone(this, { loc });
   }
@@ -2576,7 +2578,10 @@ export default class DateTime {
    * @param opts - options that affect the creation of the Duration
    * @param opts.conversionAccuracy - the conversion system to use
    */
-  diffNow(unit: DurationUnits | DurationUnits[] = "milliseconds", opts: DiffOptions = {}): Duration {
+  diffNow(
+    unit: DurationUnits | DurationUnits[] = "milliseconds",
+    opts: DiffOptions = {}
+  ): Duration {
     return this.diff(DateTime.now(), unit, opts);
   }
 
@@ -2718,7 +2723,11 @@ export default class DateTime {
    * @param fmt - the format the string is expected to be in (see description)
    * @param options - options taken by fromFormat()
    */
-  static fromFormatExplain(text: string, fmt: string, options: DateTimeOptions = {}): ExplainedFormat {
+  static fromFormatExplain(
+    text: string,
+    fmt: string,
+    options: DateTimeOptions = {}
+  ): ExplainedFormat {
     const { locale = null, numberingSystem = null } = options,
       localeToUse = Locale.fromOpts({
         locale,
@@ -2731,7 +2740,11 @@ export default class DateTime {
   /**
    * @deprecated use fromFormatExplain instead
    */
-  static fromStringExplain(text: string, fmt: string, options: DateTimeOptions = {}): ExplainedFormat {
+  static fromStringExplain(
+    text: string,
+    fmt: string,
+    options: DateTimeOptions = {}
+  ): ExplainedFormat {
     return DateTime.fromFormatExplain(text, fmt, options);
   }
 
@@ -2766,7 +2779,11 @@ export default class DateTime {
    * @param formatParser - parser from {@link DateTime.buildFormatParser}
    * @param opts - options taken by fromFormat()
    */
-  static fromFormatParser(text: string, formatParser: TokenParser, opts: DateTimeOptions = {}): DateTime {
+  static fromFormatParser(
+    text: string,
+    formatParser: TokenParser,
+    opts: DateTimeOptions = {}
+  ): DateTime {
     if (isUndefined(text) || isUndefined(formatParser)) {
       throw new InvalidArgumentError(
         "fromFormatParser requires an input string and a format parser"

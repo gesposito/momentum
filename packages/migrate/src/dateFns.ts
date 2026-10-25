@@ -422,10 +422,9 @@ export function defineDateFnsRules(kit: RuleKit) {
     (ctx, zdt) => {
       const jan4 = isoWeekYearStart(`${zdt}.yearOfWeek + 1`);
       // date-fns steps back a day from the next year's start, which a skipped midnight shifts
-      return asDate(
-        startOfDate(`${jan4}.subtract({ days: ${jan4}.dayOfWeek })`),
-        ["date-fns-dst-steps"]
-      );
+      return asDate(startOfDate(`${jan4}.subtract({ days: ${jan4}.dayOfWeek })`), [
+        "date-fns-dst-steps",
+      ]);
     }
   );
 
@@ -447,8 +446,7 @@ export function defineDateFnsRules(kit: RuleKit) {
     owner,
     "startOfYesterday",
     "`Temporal.Now.plainDateISO().subtract({ days: 1 }).toZonedDateTime(zone)` (exact)",
-    (ctx) =>
-      optionsCheck(ctx.args, 0) ?? asDate(startOfDate(`${today}.subtract({ days: 1 })`), [])
+    (ctx) => optionsCheck(ctx.args, 0) ?? asDate(startOfDate(`${today}.subtract({ days: 1 })`), [])
   );
   staticCall(
     owner,
@@ -618,10 +616,10 @@ export function defineDateFnsRules(kit: RuleKit) {
       if (rest.length > 1 && !plainOptions(rest[1])) return inOption();
       const date = `${zdt}.toPlainDate().with({ month: 1, day: 1 }).add({ days: ${n.text} - 1 })`;
       // date-fns goes through the same day of January, whose skipped midnight shifts the time
-      return asDate(
-        `${date}.toPlainDateTime(${zdt}.toPlainTime()).toZonedDateTime(${zone})`,
-        [...n.differences, "date-fns-dst-steps"]
-      );
+      return asDate(`${date}.toPlainDateTime(${zdt}.toPlainTime()).toZonedDateTime(${zone})`, [
+        ...n.differences,
+        "date-fns-dst-steps",
+      ]);
     },
     { values: 1 }
   );
@@ -817,9 +815,7 @@ export function defineDateFnsRules(kit: RuleKit) {
   );
   dated("isThisMonth", "the same year and month as today (exact)", (ctx, zdt, rest) =>
     plainOptions(rest[0])
-      ? rewrite(
-          `${zdt}.toPlainDate().toPlainYearMonth().equals(${today}.toPlainYearMonth())`
-        )
+      ? rewrite(`${zdt}.toPlainDate().toPlainYearMonth().equals(${today}.toPlainYearMonth())`)
       : inOption()
   );
   dated("isThisYear", "`.year === Temporal.Now.plainDateISO().year` (exact)", (ctx, zdt, rest) =>
@@ -1000,10 +996,7 @@ export function defineDateFnsRules(kit: RuleKit) {
     '`a.since(b, { largestUnit: "years" }).years` (differs around DST changes: date-fns-whole-units)',
     (ctx, a, b, rest) =>
       plainOptions(rest[0])
-        ? rewrite(
-            `${a}.since(${b}, { largestUnit: ${str("years", ctx.quote)} }).years`,
-            wholeUnits
-          )
+        ? rewrite(`${a}.since(${b}, { largestUnit: ${str("years", ctx.quote)} }).years`, wholeUnits)
         : inOption()
   );
 

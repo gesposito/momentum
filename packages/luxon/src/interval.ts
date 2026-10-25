@@ -273,7 +273,9 @@ export default class Interval {
       end = this.e;
     }
     end = end.startOf(unit, opts);
-    return Math.floor(end.diff(start, unit).get(unit)) + (end.valueOf() !== this.e.valueOf() ? 1 : 0);
+    return (
+      Math.floor(end.diff(start, unit).get(unit)) + (end.valueOf() !== this.e.valueOf() ? 1 : 0)
+    );
   }
 
   /**

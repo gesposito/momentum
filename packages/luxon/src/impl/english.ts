@@ -120,7 +120,10 @@ export function meridiemForDateTime(dt: Pick<DateTimeFields, "hour">): string {
   return meridiems[dt.hour < 12 ? 0 : 1];
 }
 
-export function weekdayForDateTime(dt: Pick<DateTimeFields, "weekday">, length: UnitLength): string {
+export function weekdayForDateTime(
+  dt: Pick<DateTimeFields, "weekday">,
+  length: UnitLength
+): string {
   return (weekdays(length) as string[])[dt.weekday - 1];
 }
 
