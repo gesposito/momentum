@@ -1,0 +1,5 @@
+# Commits that only reformat, which git blame skips: GitHub reads this file, and a clone does
+# after `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
+# style: format the code with bun fmt
+7b380a2b6ee42efddb2260af9229cd309f891968

@@ -134,7 +134,9 @@ the `[fmt]` section of `bunfig.toml`: lines of 100 columns and trailing commas w
 them, the style Luxon's code came with. It leaves out the vendored code, which stays as its
 authors wrote it, the migration tool's fixture projects, which its tests compare byte for byte,
 and Markdown, which is wrapped by hand. `bun fmt --check` fails when a file needs formatting, and
-`bun fmt --staged` formats just the files about to be committed. The root `tsconfig.json` only
+`bun fmt --staged` formats just the files about to be committed. `.git-blame-ignore-revs` lists
+the commit that reformatted the code, which GitHub's blame skips, and so does a clone after
+`git config blame.ignoreRevsFile .git-blame-ignore-revs`. The root `tsconfig.json` only
 references the two packages, so `bun check` at the root type-checks both, like `tsc -b`.
 
 ## License
