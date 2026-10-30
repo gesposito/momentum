@@ -113,8 +113,8 @@ native Temporal. `bun run test` is the reference run. `bun run test:bun` compare
 `packages/luxon/test/bun-known-failures.txt`, the tests that fail only because of Bun's engine:
 three on every platform (JavaScriptCore puts plain spaces in date ranges, and Bun's snapshots do
 not call `toJSON()`) and twenty-one more on macOS, where Bun uses Apple's ICU (Latin digits for
-`bn`, " at " between date and time, among others) and, since Bun 1.4.4, rejects the POSIX-style US
-zone names such as `PST8PDT`; see
+`bn`, " at " between date and time, among others) and, with the time zone data macOS installed in
+October 2026, rejects the POSIX-style US zone names such as `PST8PDT`; see
 [docs/bun-compatibility.md](docs/bun-compatibility.md).
 
 momentum works around a few upstream bugs in Temporal polyfills, engines and Bun.
